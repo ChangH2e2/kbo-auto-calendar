@@ -2,7 +2,7 @@ name: KBO-Bot
 on:
   schedule:
     - cron: '0 21 * * *' # 한국 시간 매일 새벽 6시 실행
-  workflow_dispatch: # 직접 버튼 눌러서 실행 가능하게 함
+  workflow_dispatch: 
 
 jobs:
   build:
@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python
-        uses: actions/setup-python@v4 # 👈 여기를 정확히 수정!
+        uses: actions/setup-python@v4 # 👈 'setup-python' 이어야 합니다!
         with:
           python-version: '3.9'
       - name: Install dependencies
