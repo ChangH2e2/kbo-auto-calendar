@@ -7,16 +7,23 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
+        /* 기본 스타일 */
         .inning-cell { width: 22px; text-align: center; font-size: 0.65rem; border-right: 1px solid #f3f4f6; padding: 4px 0; }
         .rheb-cell { width: 26px; text-align: center; font-weight: bold; background-color: #f9fafb; font-size: 0.7rem; }
+        
         /* 오늘 날짜 강조 */
         .today-highlight { background-color: #eff6ff !important; border: 2px solid #3b82f6 !important; position: relative; }
         .today-highlight::after { content: '오늘'; position: absolute; top: 2px; right: 4px; font-size: 0.55rem; color: #3b82f6; font-weight: 900; }
+        
+        /* 버튼 활성화/비활성화 스타일 */
+        .btn-active { background-color: white !important; color: #2563eb !important; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .btn-inactive { color: #6b7280 !important; background-color: transparent !important; }
+
         /* 스크롤바 숨기기 */
         ::-webkit-scrollbar { display: none; }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen p-2 md:p-4">
+<body class="bg-gray-100 min-h-screen p-2 md:p-4 text-gray-800">
     <div class="max-w-6xl mx-auto">
         <header class="bg-white p-4 rounded-xl shadow-sm mb-4 flex flex-col md:flex-row justify-between items-center gap-4">
             <div class="flex items-center gap-4 w-full md:w-auto justify-between">
@@ -30,8 +37,8 @@
                     <option value="KIA">KIA</option><option value="KT">KT</option><option value="LG">LG</option><option value="NC">NC</option><option value="SSG">SSG</option><option value="두산">두산</option><option value="롯데">롯데</option><option value="삼성">삼성</option><option value="키움">키움</option><option value="한화">한화</option>
                 </select>
                 <div class="flex bg-gray-100 p-1 rounded-lg">
-                    <button id="modeMonth" class="px-4 py-1.5 rounded-md text-xs font-bold bg-white shadow-sm text-blue-600">월간</button>
-                    <button id="modeWeek" class="px-4 py-1.5 rounded-md text-xs font-bold text-gray-500">주간</button>
+                    <button id="modeMonth" class="px-4 py-1.5 rounded-md text-xs font-bold transition-all">월간</button>
+                    <button id="modeWeek" class="px-4 py-1.5 rounded-md text-xs font-bold transition-all">주간</button>
                 </div>
             </div>
         </header>
@@ -55,17 +62,31 @@
     
     let allMatches = [], currentDate = new Date(), viewMode = 'month';
     
+    // [동적 날짜] 오늘 날짜 생성
     const now = new Date();
     const TODAY_STR = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
     async function fetchMatches() {
         const { data, error } = await _supabase.from('kbo_matches').select('*').order('date', {ascending: true});
-        if (error) console.error("Data fetch error:", error);
+        if (error) console.error("데이터 로드 오류:", error);
         allMatches = data || []; 
         renderView();
     }
 
     function closeModal() { document.getElementById('detailModal').classList.add('hidden'); }
+
+    // [개선] 버튼 활성화 상태 업데이트
+    function updateButtonUI() {
+        const monthBtn = document.getElementById('modeMonth');
+        const weekBtn = document.getElementById('modeWeek');
+        if (viewMode === 'month') {
+            monthBtn.className = "px-4 py-1.5 rounded-md text-xs font-bold btn-active";
+            weekBtn.className = "px-4 py-1.5 rounded-md text-xs font-bold btn-inactive";
+        } else {
+            monthBtn.className = "px-4 py-1.5 rounded-md text-xs font-bold btn-inactive";
+            weekBtn.className = "px-4 py-1.5 rounded-md text-xs font-bold btn-active";
+        }
+    }
 
     function openDetail(gameId) {
         const m = allMatches.find(x => x.game_id === gameId);
@@ -73,30 +94,22 @@
         
         const modalBody = document.getElementById('modalBody');
         const isFinished = m.home_score !== null;
-        const isCancel = m.stadium.includes("취소") || m.is_cancel === true;
+        const isCancel = m.is_cancel === true;
 
         if (isCancel) {
-            modalBody.innerHTML = `
-                <div class="text-center py-10">
-                    <div class="text-red-500 font-black text-lg mb-2">우천취소</div>
-                    <div class="text-2xl font-black mb-6 text-gray-800">${m.away} VS ${m.home}</div>
-                    <p class="text-gray-500 text-sm">해당 경기는 기상 상황으로 인해 취소되었습니다.</p>
-                </div>`;
+            modalBody.innerHTML = `<div class="text-center py-10"><div class="text-red-500 font-black text-lg mb-2">우천취소</div><div class="text-2xl font-black mb-4">${m.away} VS ${m.home}</div><p class="text-gray-500 text-sm">해당 경기는 기상 상황으로 인해 취소되었습니다.</p></div>`;
         } else if (isFinished) {
             const hL = m.home_line ? m.home_line.split('|') : [];
             const aL = m.away_line ? m.away_line.split('|') : [];
-            const hRHEB = m.home_rheb ? m.home_rheb.split('|') : ['0','0','0','0'];
-            const aRHEB = m.away_rheb ? m.away_rheb.split('|') : ['0','0','0','0'];
+            const hR = m.home_rheb ? m.home_rheb.split('|') : ['0','0','0','0'];
+            const aR = m.away_rheb ? m.away_rheb.split('|') : ['0','0','0','0'];
             
             let innings = '';
             for(let i=1; i<=Math.max(hL.length, 9); i++) innings += `<th class="inning-cell">${i}</th>`;
 
-            const getCells = (line) => {
+            const getRow = (line) => {
                 let res = '';
-                const maxInnings = Math.max(line.length, 9);
-                for(let i=0; i<maxInnings; i++) {
-                    res += `<td class="inning-cell font-bold">${line[i] || '-'}</td>`;
-                }
+                for(let i=0; i<Math.max(line.length, 9); i++) res += `<td class="inning-cell font-bold">${line[i] || '-'}</td>`;
                 return res;
             };
 
@@ -108,12 +121,10 @@
                 </div>
                 <div class="overflow-x-auto border rounded-xl shadow-sm">
                     <table class="w-full text-center">
-                        <thead class="bg-gray-50 border-b">
-                            <tr><th class="p-2 text-[0.6rem] text-left">팀</th>${innings}<th class="rheb-cell">R</th><th class="rheb-cell">H</th><th class="rheb-cell">E</th><th class="rheb-cell">B</th></tr>
-                        </thead>
+                        <thead class="bg-gray-50 border-b"><tr><th class="p-2 text-[0.6rem] text-left">팀</th>${innings}<th class="rheb-cell">R</th><th class="rheb-cell">H</th><th class="rheb-cell">E</th><th class="rheb-cell">B</th></tr></thead>
                         <tbody>
-                            <tr class="border-b"><td class="p-2 text-[0.65rem] font-bold">${m.away}</td>${getCells(aL)}<td class="rheb-cell text-red-500">${aRHEB[0]}</td><td class="rheb-cell">${aRHEB[1]}</td><td class="rheb-cell">${aRHEB[2]}</td><td class="rheb-cell">${aRHEB[3]}</td></tr>
-                            <tr><td class="p-2 text-[0.65rem] font-bold">${m.home}</td>${getCells(hL)}<td class="rheb-cell text-red-500">${hRHEB[0]}</td><td class="rheb-cell">${hRHEB[1]}</td><td class="rheb-cell">${hRHEB[2]}</td><td class="rheb-cell">${hRHEB[3]}</td></tr>
+                            <tr class="border-b"><td class="p-2 text-[0.65rem] font-bold">${m.away}</td>${getRow(aL)}<td class="rheb-cell text-red-500">${aR[0]}</td><td class="rheb-cell">${aR[1]}</td><td class="rheb-cell">${aR[2]}</td><td class="rheb-cell">${aR[3]}</td></tr>
+                            <tr><td class="p-2 text-[0.65rem] font-bold">${m.home}</td>${getRow(hL)}<td class="rheb-cell text-red-500">${hR[0]}</td><td class="rheb-cell">${hR[1]}</td><td class="rheb-cell">${hR[2]}</td><td class="rheb-cell">${hR[3]}</td></tr>
                         </tbody>
                     </table>
                 </div>`;
@@ -122,27 +133,16 @@
             const vendor = isInterpark ? '인터파크 티켓' : '티켓링크';
             const url = isInterpark ? 'https://ticket.interpark.com/Contents/Sports/GoodsInfo?SportsCode=07001' : 'https://www.ticketlink.co.kr/sports/baseball';
 
-            modalBody.innerHTML = `
-                <div class="text-center py-6">
-                    <div class="text-sm font-bold text-blue-500 mb-2">${m.date} ${m.time} 예정</div>
-                    <div class="text-2xl font-black mb-10">${m.away} VS ${m.home}</div>
-                    <div class="bg-gray-50 p-6 rounded-2xl border-2 border-dashed border-gray-200">
-                        <p class="text-gray-500 text-sm mb-4 font-medium">아직 시작 전인 경기입니다.</p>
-                        <a href="${url}" target="_blank" class="block w-full py-3 rounded-xl font-black text-white ${isInterpark ? 'bg-slate-900' : 'bg-red-500'}">
-                            ${vendor}에서 예매하기
-                        </a>
-                    </div>
-                </div>`;
+            modalBody.innerHTML = `<div class="text-center py-6"><div class="text-sm font-bold text-blue-500 mb-2">${m.date} ${m.time} 예정</div><div class="text-2xl font-black mb-10">${m.away} VS ${m.home}</div><div class="bg-gray-50 p-6 rounded-2xl border-2 border-dashed border-gray-200"><p class="text-gray-500 text-sm mb-4 font-medium">아직 시작 전인 경기입니다.</p><a href="${url}" target="_blank" class="block w-full py-3 rounded-xl font-black text-white ${isInterpark ? 'bg-slate-900' : 'bg-red-500'}">${vendor}에서 예매하기</a></div></div>`;
         }
         document.getElementById('detailModal').classList.remove('hidden');
     }
 
+    // [개선] 경기 리스트 HTML 생성
     function getMatchHTML(m, mode) {
         const isToday = m.date === TODAY_STR;
-        // 우천취소 판별 (문구 포함 또는 별도 플래그)
-        const isUchwi = m.stadium.includes("취소") || m.is_cancel === true;
+        const isUchwi = m.is_cancel === true;
         
-        // 승리팀 판별 (점수 존재 시)
         const awayWin = m.home_score !== null && m.away_score > m.home_score;
         const homeWin = m.home_score !== null && m.home_score > m.away_score;
         
@@ -153,21 +153,21 @@
             centerDisplay = `<span class="font-black mx-1.5 text-blue-700">${m.away_score}:${m.home_score}</span>`;
         }
 
-        const teamStyle = (isWin) => isWin ? "font-black text-blue-900 scale-105 transition-transform" : "font-medium text-gray-500";
-        const winBadge = (isWin) => isWin ? `<span class="ml-0.5 text-[0.6rem]">🏆</span>` : "";
+        // [수정] 트로피 제거, 이긴 팀 굵게 강조만 유지
+        const teamStyle = (isWin) => isWin ? "font-black text-blue-900 scale-105" : "font-medium text-gray-500";
 
         return `
-        <div onclick="openDetail('${m.game_id}')" class="cursor-pointer bg-white border border-gray-100 rounded-lg p-2 mb-1.5 shadow-sm hover:border-blue-400 hover:shadow-md transition-all ${isToday ? 'today-highlight' : ''}">
+        <div onclick="openDetail('${m.game_id}')" class="cursor-pointer bg-white border border-gray-100 rounded-lg p-2 mb-1.5 shadow-sm hover:border-blue-400 transition-all ${isToday ? 'today-highlight' : ''}">
             <div class="flex justify-between items-center w-full text-[0.65rem] md:text-xs">
                 <div class="flex-1 text-right ${teamStyle(awayWin)} truncate">
-                    <span class="text-[0.55rem] text-gray-300 mr-0.5 font-normal">(원)</span>${m.away}${winBadge(awayWin)}
+                    <span class="text-[0.55rem] text-gray-300 mr-0.5 font-normal">(원)</span>${m.away}
                 </div>
                 ${centerDisplay}
                 <div class="flex-1 text-left ${teamStyle(homeWin)} truncate">
-                    ${winBadge(homeWin)}${m.home}<span class="text-[0.55rem] text-gray-300 ml-0.5 font-normal">(홈)</span>
+                    ${m.home}<span class="text-[0.55rem] text-gray-300 ml-0.5 font-normal">(홈)</span>
                 </div>
             </div>
-            <div class="text-[0.5rem] text-gray-400 mt-1.5 text-center font-medium">📍 ${m.stadium.replace("(우천취소)","")} | ${m.time}</div>
+            <div class="text-[0.5rem] text-gray-400 mt-1.5 text-center font-medium">📍 ${m.stadium} | ${m.time}</div>
         </div>`;
     }
 
@@ -175,21 +175,22 @@
         const container = document.getElementById('calendar');
         const filter = document.getElementById('teamFilter').value;
         container.innerHTML = '';
+        updateButtonUI();
 
         if (viewMode === 'month') {
             const y = currentDate.getFullYear(), m = currentDate.getMonth() + 1;
             document.getElementById('viewTitle').innerText = `${y}년 ${m}월`;
             container.className = 'grid grid-cols-7 gap-1 md:gap-2';
-            
             const startDay = new Date(y, m-1, 1).getDay(), days = new Date(y, m, 0).getDate();
-            for(let i=0; i<startDay; i++) container.innerHTML += '<div class="min-h-[80px] bg-gray-50/50 rounded-xl"></div>';
+            
+            for(let i=0; i<startDay; i++) container.innerHTML += '<div class="min-h-[80px] bg-gray-50/30 rounded-xl"></div>';
             
             for(let d=1; d<=days; d++) {
                 const ds = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                 const isToday = ds === TODAY_STR;
                 const matches = allMatches.filter(mt => mt.date === ds && (filter === '전체' || mt.home === filter || mt.away === filter));
                 
-                // 공휴일 정보 및 일요일 체크
+                // 공휴일 정보 확인
                 const holiday = matches.length > 0 ? matches[0].holiday_name : null;
                 const isSun = new Date(y, m-1, d).getDay() === 0;
 
@@ -197,22 +198,22 @@
                     <div class="bg-white/40 p-1 min-h-[110px] rounded-xl border border-transparent flex flex-col ${isToday ? 'today-highlight' : ''}">
                         <div class="flex justify-between items-start mb-1.5 p-1">
                             <span class="text-xs font-black ${isSun || holiday ? 'text-red-500' : 'text-gray-800'}">${d}</span>
-                            ${holiday ? `<span class="text-[0.5rem] font-bold text-red-400 truncate max-w-[40px] text-right">${holiday}</span>` : ''}
+                            ${holiday ? `<span class="text-[0.5rem] font-bold text-red-400 truncate max-w-[45px]">${holiday}</span>` : ''}
                         </div>`;
                 
                 if (matches.length > 0) {
                     matches.forEach(mt => dayDiv += getMatchHTML(mt, 'month'));
                 } else {
-                    dayDiv += `<div class="flex-1 flex items-center justify-center text-[0.6rem] text-gray-300 font-bold italic tracking-tighter">경기 없는 날</div>`;
+                    // [개선] 경기 없는 날 표시
+                    dayDiv += `<div class="flex-1 flex items-center justify-center text-[0.6rem] text-gray-300 font-bold italic">경기 없는 날</div>`;
                 }
                 container.innerHTML += dayDiv + `</div>`;
             }
         } else {
+            // 주간 뷰
             container.className = 'flex flex-col gap-3';
-            const start = new Date(currentDate); 
-            start.setDate(currentDate.getDate() - currentDate.getDay());
+            const start = new Date(currentDate); start.setDate(currentDate.getDate() - currentDate.getDay());
             document.getElementById('viewTitle').innerText = `주간 일정`;
-            
             for(let i=0; i<7; i++) {
                 const d = new Date(start); d.setDate(start.getDate()+i);
                 const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -222,11 +223,11 @@
 
                 let dayDiv = `
                     <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 ${isToday ? 'today-highlight' : ''}">
-                        <div class="flex items-center gap-2 mb-4">
+                        <div class="flex items-center gap-2 mb-3">
                             <span class="font-black text-sm ${d.getDay() === 0 || holiday ? 'text-red-500' : 'text-gray-800'}">${ds}</span>
                             ${holiday ? `<span class="bg-red-50 text-red-500 text-[10px] px-2 py-0.5 rounded-full font-bold">${holiday}</span>` : ''}
                         </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">`;
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">`;
                 
                 if (matches.length > 0) {
                     matches.forEach(mt => dayDiv += getMatchHTML(mt, 'week'));
@@ -238,10 +239,18 @@
         }
     }
 
-    document.getElementById('modeMonth').onclick = () => { viewMode='month'; renderView(); };
-    document.getElementById('modeWeek').onclick = () => { viewMode='week'; renderView(); };
-    document.getElementById('prevBtn').onclick = () => { viewMode==='month'?currentDate.setMonth(currentDate.getMonth()-1):currentDate.setDate(currentDate.getDate()-7); renderView(); };
-    document.getElementById('nextBtn').onclick = () => { viewMode==='month'?currentDate.setMonth(currentDate.getMonth()+1):currentDate.setDate(currentDate.getDate()+7); renderView(); };
+    document.getElementById('modeMonth').onclick = () => { viewMode = 'month'; renderView(); };
+    document.getElementById('modeWeek').onclick = () => { viewMode = 'week'; renderView(); };
+    document.getElementById('prevBtn').onclick = () => { 
+        if(viewMode === 'month') currentDate.setMonth(currentDate.getMonth()-1);
+        else currentDate.setDate(currentDate.getDate()-7);
+        renderView(); 
+    };
+    document.getElementById('nextBtn').onclick = () => { 
+        if(viewMode === 'month') currentDate.setMonth(currentDate.getMonth()+1);
+        else currentDate.setDate(currentDate.getDate()+7);
+        renderView(); 
+    };
     document.getElementById('teamFilter').onchange = renderView;
 
     fetchMatches();
