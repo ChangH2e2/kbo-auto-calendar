@@ -7,37 +7,39 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        .inning-cell { width: 24px; text-align: center; font-size: 0.7rem; border-right: 1px solid #f3f4f6; padding: 6px 0; }
-        .rheb-cell { width: 30px; text-align: center; font-weight: bold; background-color: #f9fafb; font-size: 0.75rem; }
-        .today-card { border: 2px solid #3b82f6 !important; background-color: #eff6ff !important; }
+        .inning-cell { width: 22px; text-align: center; font-size: 0.65rem; border-right: 1px solid #f3f4f6; padding: 4px 0; }
+        .rheb-cell { width: 26px; text-align: center; font-weight: bold; background-color: #f9fafb; font-size: 0.7rem; }
+        /* [개선] 오늘 날짜 강조 스타일 */
+        .today-highlight { background-color: #eff6ff !important; border: 2px solid #3b82f6 !important; position: relative; }
+        .today-highlight::after { content: '오늘'; position: absolute; top: 2px; right: 4px; font-size: 0.55rem; color: #3b82f6; font-weight: 900; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen p-2 md:p-4">
     <div class="max-w-6xl mx-auto">
         <header class="bg-white p-4 rounded-xl shadow-sm mb-4 flex flex-col md:flex-row justify-between items-center gap-4">
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-4 w-full md:w-auto justify-between">
                 <button id="prevBtn" class="p-2 px-4 bg-gray-100 rounded-lg font-bold hover:bg-gray-200">◀</button>
                 <h1 id="viewTitle" class="text-xl font-black text-gray-800">로딩중...</h1>
                 <button id="nextBtn" class="p-2 px-4 bg-gray-100 rounded-lg font-bold hover:bg-gray-200">▶</button>
             </div>
-            <div class="flex gap-2">
+            <div class="flex items-center gap-2">
                 <select id="teamFilter" class="border-2 border-gray-100 p-2 rounded-lg text-sm font-bold">
                     <option value="전체">전체 구단</option>
                     <option value="KIA">KIA</option><option value="KT">KT</option><option value="LG">LG</option><option value="NC">NC</option><option value="SSG">SSG</option><option value="두산">두산</option><option value="롯데">롯데</option><option value="삼성">삼성</option><option value="키움">키움</option><option value="한화">한화</option>
                 </select>
                 <div class="flex bg-gray-100 p-1 rounded-lg">
-                    <button id="modeMonth" class="px-4 py-1 rounded-md text-sm font-bold bg-white shadow-sm text-blue-600">월간</button>
-                    <button id="modeWeek" class="px-4 py-1 rounded-md text-sm font-bold text-gray-500">주간</button>
+                    <button id="modeMonth" class="px-4 py-1.5 rounded-md text-xs font-bold bg-white shadow-sm text-blue-600">월간</button>
+                    <button id="modeWeek" class="px-4 py-1.5 rounded-md text-xs font-bold text-gray-500">주간</button>
                 </div>
             </div>
         </header>
-        <div id="calendar" class="w-full grid grid-cols-7 gap-1 md:gap-2"></div>
+        <div id="calendar" class="w-full"></div>
     </div>
 
     <div id="detailModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
             <div class="bg-gray-800 p-4 text-white flex justify-between items-center">
-                <h2 id="modalTitle" class="font-black text-sm">GAME CENTER</h2>
+                <h2 class="font-black text-sm uppercase">Game Details</h2>
                 <button onclick="closeModal()" class="text-2xl">&times;</button>
             </div>
             <div id="modalBody" class="p-6 bg-white"></div>
@@ -45,13 +47,13 @@
     </div>
 
 <script>
-    const SUPABASE_URL = 'YOUR_SUPABASE_URL';
-    const SUPABASE_KEY = 'YOUR_SUPABASE_KEY';
+    const SUPABASE_URL = 'YOUR_URL';
+    const SUPABASE_KEY = 'YOUR_KEY';
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
     let allMatches = [], currentDate = new Date(), viewMode = 'month';
     
-    // [수정] 오늘 날짜 동적 생성 (하드코딩 제거)
+    // [개선] 오늘 날짜 동적 생성 (하드코딩 제거)
     const now = new Date();
     const TODAY_STR = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
@@ -65,63 +67,58 @@
         if(!m) return;
         
         const modalBody = document.getElementById('modalBody');
-        
-        if (m.home_score !== null) {
-            // Case 1: 지난 경기 기록 (기록실 스타일)
-            const hL = m.home_line ? m.home_line.split('|') : [];
-            const aL = m.away_line ? m.away_line.split('|') : [];
-            const hRHEB = m.home_rheb ? m.home_rheb.split('|') : [0,0,0,0];
-            const aRHEB = m.away_rheb ? m.away_rheb.split('|') : [0,0,0,0];
-            
-            let inningHeaders = '';
-            for(let i=1; i<=Math.max(hL.length, 9); i++) inningHeaders += `<th class="inning-cell">${i}</th>`;
+        const isFinished = m.home_score !== null;
 
-            const rowHTML = (team, line, rheb) => {
-                let cells = `<td class="p-2 font-bold bg-gray-50 text-xs">${team}</td>`;
-                line.forEach(s => cells += `<td class="inning-cell font-bold">${s}</td>`);
-                for(let i=line.length; i<Math.max(line.length, 9); i++) cells += `<td class="inning-cell">-</td>`;
-                cells += `<td class="rheb-cell text-red-600">${rheb[0]}</td><td class="rheb-cell">${rheb[1]}</td><td class="rheb-cell">${rheb[2]}</td><td class="rheb-cell">${rheb[3]}</td>`;
-                return cells;
+        if (isFinished) {
+            // [종료된 경기] 상세 스코어보드 테이블
+            const hL = m.home_line.split('|'), aL = m.away_line.split('|');
+            const hRHEB = m.home_rheb.split('|'), aRHEB = m.away_rheb.split('|');
+            
+            let innings = '';
+            for(let i=1; i<=Math.max(hL.length, 9); i++) innings += `<th class="inning-cell">${i}</th>`;
+
+            const getCells = (line) => {
+                let res = '';
+                line.forEach(s => res += `<td class="inning-cell font-bold">${s}</td>`);
+                for(let i=line.length; i<Math.max(line.length, 9); i++) res += `<td class="inning-cell">-</td>`;
+                return res;
             };
 
             modalBody.innerHTML = `
                 <div class="flex justify-between items-center mb-8">
-                    <div class="text-center"><div class="text-2xl font-black">${m.away}</div><div class="text-xs text-gray-400">AWAY</div></div>
-                    <div class="text-4xl font-black text-blue-600">${m.away_score} : ${m.home_score}</div>
-                    <div class="text-center"><div class="text-2xl font-black">${m.home}</div><div class="text-xs text-gray-400">HOME</div></div>
+                    <div class="text-center"><div class="text-xl font-black">${m.away}</div><div class="text-[0.6rem] text-gray-400">AWAY</div></div>
+                    <div class="text-3xl font-black text-blue-600">${m.away_score} : ${m.home_score}</div>
+                    <div class="text-center"><div class="text-xl font-black">${m.home}</div><div class="text-[0.6rem] text-gray-400">HOME</div></div>
                 </div>
-                <div class="overflow-x-auto border rounded-xl shadow-sm mb-4">
+                <div class="overflow-x-auto border rounded-xl shadow-sm">
                     <table class="w-full text-center">
                         <thead class="bg-gray-50 border-b">
-                            <tr><th class="p-2 text-xs">팀</th>${inningHeaders}<th class="rheb-cell">R</th><th class="rheb-cell">H</th><th class="rheb-cell">E</th><th class="rheb-cell">B</th></tr>
+                            <tr><th class="p-2 text-[0.6rem] text-left">팀</th>${innings}<th class="rheb-cell">R</th><th class="rheb-cell">H</th><th class="rheb-cell">E</th><th class="rheb-cell">B</th></tr>
                         </thead>
                         <tbody>
-                            <tr class="border-b">${rowHTML(m.away, aL, aRHEB)}</tr>
-                            <tr>${rowHTML(m.home, hL, hRHEB)}</tr>
+                            <tr class="border-b"><td class="p-2 text-[0.65rem] font-bold">${m.away}</td>${getCells(aL)}<td class="rheb-cell text-red-500">${aRHEB[0]}</td><td class="rheb-cell">${aRHEB[1]}</td><td class="rheb-cell">${aRHEB[2]}</td><td class="rheb-cell">${aRHEB[3]}</td></tr>
+                            <tr><td class="p-2 text-[0.65rem] font-bold">${m.home}</td>${getCells(hL)}<td class="rheb-cell text-red-500">${hRHEB[0]}</td><td class="rheb-cell">${hRHEB[1]}</td><td class="rheb-cell">${hRHEB[2]}</td><td class="rheb-cell">${hRHEB[3]}</td></tr>
                         </tbody>
                     </table>
                 </div>
-                <p class="text-center text-xs text-gray-400">📍 ${m.stadium} | 경기 종료</p>
+                <div class="mt-4 text-center text-[0.6rem] text-gray-400">📍 ${m.stadium} | 경기 정보는 KBO 제공 데이터를 바탕으로 합니다.</div>
             `;
         } else {
-            // Case 2: 예정된 경기 (예매처 안내)
-            // 구단별 예매처 매핑
-            const ticketLink = (m.home === '두산' || m.home === '키움') ? '인터파크 티켓' : '티켓링크';
-            const ticketUrl = (m.home === '두산' || m.home === '키움') 
-                ? 'https://ticket.interpark.com/Contents/Sports/GoodsInfo?SportsCode=07001' 
-                : 'https://www.ticketlink.co.kr/sports/baseball';
+            // [예정된 경기] 구단별 예매처 연동
+            const isInterpark = ['두산', '키움'].includes(m.home);
+            const vendor = isInterpark ? '인터파크 티켓' : '티켓링크';
+            const url = isInterpark ? 'https://ticket.interpark.com/Contents/Sports/GoodsInfo?SportsCode=07001' : 'https://www.ticketlink.co.kr/sports/baseball';
 
             modalBody.innerHTML = `
-                <div class="text-center py-8">
-                    <div class="text-sm text-blue-600 font-bold mb-2">${m.date} ${m.time} 예정</div>
-                    <div class="text-3xl font-black mb-6">${m.away} <span class="text-gray-300">VS</span> ${m.home}</div>
-                    <div class="bg-gray-50 p-6 rounded-2xl border border-dashed border-gray-300">
-                        <p class="text-gray-600 mb-4 font-medium">아직 경기가 시작되지 않았습니다.</p>
-                        <a href="${ticketUrl}" target="_blank" class="inline-block bg-red-500 text-white px-8 py-3 rounded-xl font-bold hover:bg-red-600 transition-colors">
-                            ${ticketLink}에서 예매하기
+                <div class="text-center py-6">
+                    <div class="text-sm font-bold text-blue-500 mb-2">${m.date} ${m.time} 예정</div>
+                    <div class="text-2xl font-black mb-10">${m.away} VS ${m.home}</div>
+                    <div class="bg-gray-50 p-6 rounded-2xl border-2 border-dashed border-gray-200">
+                        <p class="text-gray-500 text-sm mb-4 font-medium">아직 시작 전인 경기입니다.</p>
+                        <a href="${url}" target="_blank" class="block w-full py-3 rounded-xl font-black text-white ${isInterpark ? 'bg-slate-900' : 'bg-red-500'}">
+                            ${vendor}에서 예매하기
                         </a>
                     </div>
-                    <p class="mt-4 text-xs text-gray-400">구장: ${m.stadium}</p>
                 </div>
             `;
         }
@@ -132,21 +129,20 @@
 
     function getMatchHTML(m, mode) {
         const isToday = m.date === TODAY_STR;
-        const isUchwi = m.stadium.includes("취소");
-        const score = isUchwi ? `<span class="text-red-500 font-bold text-[0.6rem]">취소</span>` : 
-                    (m.home_score !== null ? `<span class="font-bold">${m.home_score}:${m.away_score}</span>` : `<span class="text-gray-300">vs</span>`);
+        const score = m.home_score !== null ? `<span class="font-bold">${m.home_score}:${m.away_score}</span>` : `<span class="text-gray-300 font-normal">vs</span>`;
+        const txtSize = mode === 'month' ? 'text-[0.55rem] md:text-xs' : 'text-sm md:text-base';
         
-        return `<div onclick="openDetail('${m.game_id}')" class="cursor-pointer bg-white border border-gray-100 rounded-lg p-2 mb-1 flex flex-col items-center shadow-sm hover:border-blue-400 ${isToday ? 'today-card' : ''}">
-            <div class="flex justify-between items-center w-full text-[0.65rem] md:text-xs font-bold">
-                <span class="truncate">${m.home}</span>
-                <span class="mx-1">${score}</span>
-                <span class="truncate">${m.away}</span>
+        return `<div onclick="openDetail('${m.game_id}')" class="cursor-pointer bg-white border border-gray-100 rounded-lg p-1.5 mb-1 flex flex-col items-center shadow-sm hover:border-blue-400 ${isToday ? 'today-highlight' : ''}">
+            <div class="flex justify-between items-center w-full font-bold ${txtSize} tracking-tighter">
+                <span class="truncate flex-1 text-right">${m.home}</span>
+                <span class="px-1.5">${score}</span>
+                <span class="truncate flex-1 text-left">${m.away}</span>
             </div>
-            <div class="text-[0.5rem] md:text-[0.6rem] text-gray-400 mt-1">📍 ${m.stadium.replace("(취소)","")}</div>
+            <div class="text-[0.45rem] md:text-[0.55rem] text-gray-400 mt-1">📍 ${m.stadium} | ${m.time}</div>
         </div>`;
     }
 
-    function renderView() {
+    async function renderView() {
         const container = document.getElementById('calendar');
         const filter = document.getElementById('teamFilter').value;
         container.innerHTML = '';
@@ -154,25 +150,38 @@
         if (viewMode === 'month') {
             const y = currentDate.getFullYear(), m = currentDate.getMonth() + 1;
             document.getElementById('viewTitle').innerText = `${y}년 ${m}월`;
+            container.className = 'grid grid-cols-7 gap-1 md:gap-2';
             const startDay = new Date(y, m-1, 1).getDay(), days = new Date(y, m, 0).getDate();
-            
             for(let i=0; i<startDay; i++) container.innerHTML += '<div class="min-h-[80px]"></div>';
             for(let d=1; d<=days; d++) {
                 const ds = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                 const isToday = ds === TODAY_STR;
                 const matches = allMatches.filter(mt => mt.date === ds && (filter === '전체' || mt.home === filter || mt.away === filter));
-                let dayDiv = `<div class="bg-white/50 p-1 min-h-[100px] rounded-lg border border-transparent ${isToday ? 'bg-blue-50 border-blue-200' : ''}"><div class="text-xs font-bold mb-1">${d}</div>`;
+                let dayDiv = `<div class="bg-white/40 p-1 min-h-[100px] rounded-xl border border-transparent flex flex-col ${isToday ? 'today-highlight' : ''}"><div class="text-xs font-black mb-1 p-1">${d}</div>`;
                 matches.forEach(mt => dayDiv += getMatchHTML(mt, 'month'));
                 container.innerHTML += dayDiv + `</div>`;
             }
+        } else {
+            // 주간 뷰 (기본 주간 표시 로직)
+            container.className = 'flex flex-col gap-3';
+            const start = new Date(currentDate); start.setDate(currentDate.getDate() - currentDate.getDay());
+            document.getElementById('viewTitle').innerText = `주간 일정`;
+            for(let i=0; i<7; i++) {
+                const d = new Date(start); d.setDate(start.getDate()+i);
+                const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                const isToday = ds === TODAY_STR;
+                const matches = allMatches.filter(mt => mt.date === ds && (filter === '전체' || mt.home === filter || mt.away === filter));
+                let dayDiv = `<div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 ${isToday ? 'today-highlight' : ''}"><div class="font-black text-sm mb-3">${ds}</div><div class="grid grid-cols-1 md:grid-cols-2 gap-2">`;
+                matches.forEach(mt => dayDiv += getMatchHTML(mt, 'week'));
+                container.innerHTML += dayDiv + `</div></div>`;
+            }
         }
-        // 주간 뷰 생략(동일 로직)
     }
 
     document.getElementById('modeMonth').onclick = () => { viewMode='month'; renderView(); };
     document.getElementById('modeWeek').onclick = () => { viewMode='week'; renderView(); };
-    document.getElementById('prevBtn').onclick = () => { currentDate.setMonth(currentDate.getMonth()-1); renderView(); };
-    document.getElementById('nextBtn').onclick = () => { currentDate.setMonth(currentDate.getMonth()+1); renderView(); };
+    document.getElementById('prevBtn').onclick = () => { viewMode==='month'?currentDate.setMonth(currentDate.getMonth()-1):currentDate.setDate(currentDate.getDate()-7); renderView(); };
+    document.getElementById('nextBtn').onclick = () => { viewMode==='month'?currentDate.setMonth(currentDate.getMonth()+1):currentDate.setDate(currentDate.getDate()+7); renderView(); };
     document.getElementById('teamFilter').onchange = renderView;
     fetchMatches();
 </script>
