@@ -9,7 +9,28 @@ import time
 
 URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
 KEY = os.environ.get("SUPABASE_KEY", "").strip()
+HOLIDAY_API_KEY = "4b4ad3442715e2758dd90b80e40e0a219d74b6ca6f870ad85cdeb8a37709e073"
 VALID_TEAMS = ['KIA', 'KT', 'LG', 'NC', 'SSG', '두산', '롯데', '삼성', '키움', '한화']
+
+def get_holidays(year):
+    """한국천문연구원 특일정보 API를 통한 공휴일 수집"""
+    holidays = {}
+    try:
+        for month in range(3, 12):
+            url = "http://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo"
+            params = {'solYear': year, 'solMonth': str(month).zfill(2), 'ServiceKey': HOLIDAY_API_KEY, '_type': 'json'}
+            res = requests.get(url, params=params)
+            body = res.json().get('response', {}).get('body', {})
+            if body and 'items' in body and body['items']:
+                item_list = body['items'].get('item', [])
+                if isinstance(item_list, dict): item_list = [item_list]
+                for h in item_list:
+                    locdate = str(h.get('locdate'))
+                    f_date = f"{locdate[:4]}-{locdate[4:6]}-{locdate[6:8]}"
+                    holidays[f_date] = h.get('dateName')
+    except Exception as e:
+        print(f"⚠️ 공휴일 데이터 호출 실패: {e}")
+    return holidays
 
 def get_line_score(game_id):
     """경기 상세 이닝 점수 및 RHEB 수집"""
@@ -36,7 +57,10 @@ def get_kbo_data():
     current_year = str(now.year)
     target_months = [str(m).zfill(2) for m in range(3, 12)]
     all_results = []
-    
+
+    # 공휴일 정보 미리 수집
+    holidays = get_holidays(current_year)
+
     for current_month in target_months:
         print(f"📡 {current_month}월 상세 데이터 포함 수집 중...")
         api_url = "https://www.koreabaseball.com/ws/Schedule.asmx/GetScheduleList"
@@ -78,22 +102,23 @@ def get_kbo_data():
                     h_score, a_score = None, None
                     h_line, a_line, h_rheb, a_rheb = None, None, None, None
                     
-                    if "취소" in remark_text or "우천" in remark_text:
-                        stadium_name = f"{stadium_name}(우천취소)"
-                    else:
+                    # 우천취소 처리: stadium_name에서 제거하고 웹 UI에서 vs 자리에 노출되도록 필드 구성
+                    is_cancel = "취소" in remark_text or "우천" in remark_text
+                    
+                    if not is_cancel:
                         em = soup.find('em')
                         if em:
                             s = em.find_all('span')
                             if len(s) >= 3:
                                 a_score, h_score = int(s[0].text), int(s[-1].text)
-                                # 종료된 경기 상세 기록 수집
                                 h_line, a_line, h_rheb, a_rheb = get_line_score(game_id)
                                 time.sleep(0.05)
 
                     all_results.append({
                         "date": f"{current_year}-{curr_date}", "home": home_team, "away": away_team,
                         "home_score": h_score, "away_score": a_score, "stadium": stadium_name, "time": time_text,
-                        "game_id": game_id, "home_line": h_line, "away_line": a_line, "home_rheb": h_rheb, "away_rheb": a_rheb
+                        "game_id": game_id, "home_line": h_line, "away_line": a_line, "home_rheb": h_rheb, "away_rheb": a_rheb,
+                        "holiday_name": holidays.get(curr_date_str) # 공휴일 정보 추가
                     })
     return all_results
 
@@ -103,4 +128,4 @@ if __name__ == "__main__":
         supabase = create_client(URL, KEY)
         supabase.table("kbo_matches").delete().gte("date", "2000-01-01").execute()
         supabase.table("kbo_matches").insert(data).execute()
-        print(f"🎉 상세 기록 포함 업데이트 완료!")
+        print(f"🎉 정규시즌 및 공휴일 정보 업데이트 완료! (총 {len(data)}건)")
