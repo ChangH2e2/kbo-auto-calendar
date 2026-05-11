@@ -41,12 +41,13 @@
     </div>
 
 <script>
+    // 창희님의 API 키가 적용된 수파베이스 연결
     const SUPABASE_URL = 'https://rqdwdortnbpkpipussah.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_72QYev7CliIOdaHVa9caFg_mm19QiZE';
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let allMatches = [];
-    let currentDate = new Date(); // 현재 날짜를 기준으로 시작
+    let currentDate = new Date();
 
     async function fetchMatches() {
         const { data, error } = await _supabase.from('kbo_matches').select('*').order('date', {ascending: true});
@@ -60,42 +61,41 @@
         const container = document.getElementById('calendar');
         const filterValue = document.getElementById('teamFilter').value;
         const year = currentDate.getFullYear();
-        const month = currentDate.getMonth() + 1; // 1~12월
+        const month = currentDate.getMonth() + 1;
         const monthStr = month.toString().padStart(2, '0');
 
-        // 상단 제목 업데이트
         document.getElementById('monthTitle').innerText = `⚾️ KBO ${year}년 ${month}월`;
-
         container.innerHTML = '';
         
-        // 해당 월의 첫째 날 요일 (0:일요일 ~ 6:토요일)과 총 일수 계산
         const startDay = new Date(year, month - 1, 1).getDay();
         const daysInMonth = new Date(year, month, 0).getDate();
 
-        // 1. 시작일 전까지 빈 칸 채우기
         for(let i = 0; i < startDay; i++) {
             container.innerHTML += '<div class="calendar-day bg-gray-50/50"></div>';
         }
 
-        // 2. 날짜별 일정 렌더링
         for(let day = 1; day <= daysInMonth; day++) {
             const dateStr = `${year}-${monthStr}-${day.toString().padStart(2, '0')}`;
-            
-            // 현재 달력의 연/월과 일치하고, 필터에 맞는 경기만 추출
             const filtered = allMatches.filter(m => m.date === dateStr && (filterValue === '전체' || m.home.includes(filterValue) || m.away.includes(filterValue)));
             
             let dayHtml = `<div class="calendar-day"><span class="text-sm font-black ${day%7===(7-startDay)%7?'text-blue-500':(day%7===(8-startDay)%7?'text-red-500':'text-gray-400')}">${day}</span>`;
             
             filtered.forEach(m => {
-                const score = (m.home_score !== null) 
-                    ? `<span class="score-badge">${m.home_score}</span> : <span class="score-badge">${m.away_score}</span>`
-                    : `<span class="text-gray-300 font-bold">vs</span>`;
+                let score;
+                // 우천취소 로직 반영
+                if (m.stadium.includes("취소")) {
+                    score = `<span class="text-red-500 font-black text-[0.65rem]">우천취소</span>`;
+                } else if (m.home_score !== null) {
+                    score = `<span class="score-badge">${m.home_score}</span> : <span class="score-badge">${m.away_score}</span>`;
+                } else {
+                    score = `<span class="text-gray-300 font-bold">vs</span>`;
+                }
                 
                 dayHtml += `
                     <div class="match-card">
                         <div class="flex justify-between items-center gap-1">
                             <span class="font-bold text-gray-700">${m.home}</span>
-                            ${score}
+                            <div class="flex-1 text-center">${score}</div>
                             <span class="font-bold text-gray-700">${m.away}</span>
                         </div>
                         <span class="stadium-info">📍 ${m.stadium} | ${m.time}</span>
@@ -106,17 +106,8 @@
         }
     }
 
-    // 네비게이션 버튼 이벤트 (이전 달 / 다음 달)
-    document.getElementById('prevBtn').addEventListener('click', () => {
-        currentDate.setMonth(currentDate.getMonth() - 1);
-        renderCalendar();
-    });
-    
-    document.getElementById('nextBtn').addEventListener('click', () => {
-        currentDate.setMonth(currentDate.getMonth() + 1);
-        renderCalendar();
-    });
-
+    document.getElementById('prevBtn').addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); });
+    document.getElementById('nextBtn').addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); });
     document.getElementById('teamFilter').addEventListener('change', renderCalendar);
     
     fetchMatches();
