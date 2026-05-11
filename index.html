@@ -7,149 +7,121 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-gray-100 md:bg-gray-50 min-h-screen p-1 md:p-4">
+<body class="bg-gray-100 min-h-screen p-1 md:p-4">
     <div class="max-w-6xl mx-auto">
-        <header class="bg-white p-2 md:p-5 md:rounded-xl shadow-sm mb-2 md:mb-6 flex flex-col md:flex-row justify-between items-center gap-2 md:gap-4 sticky top-0 z-10 md:static">
-            <div class="flex items-center justify-between w-full md:w-auto gap-2 md:gap-4">
-                <button id="prevBtn" class="p-1.5 px-3 md:px-4 bg-gray-100 hover:bg-gray-200 rounded-lg font-bold">◀</button>
-                <div class="text-center flex-1 md:flex-none">
-                    <h1 id="monthTitle" class="text-base md:text-2xl font-black text-gray-800 underline decoration-blue-500 decoration-4">⚾️ KBO 일정</h1>
-                </div>
-                <button id="nextBtn" class="p-1.5 px-3 md:px-4 bg-gray-100 hover:bg-gray-200 rounded-lg font-bold">▶</button>
+        <header class="bg-white p-2 md:p-5 md:rounded-xl shadow-sm mb-2 flex flex-col md:flex-row justify-between items-center gap-2 sticky top-0 z-10 md:static">
+            <div class="flex items-center justify-between w-full md:w-auto gap-2">
+                <button id="prevBtn" class="p-1.5 px-3 bg-gray-100 rounded-lg font-bold">◀</button>
+                <h1 id="viewTitle" class="text-base md:text-2xl font-black text-gray-800 underline decoration-blue-500 decoration-4">로딩중...</h1>
+                <button id="nextBtn" class="p-1.5 px-3 bg-gray-100 rounded-lg font-bold">▶</button>
             </div>
-            <select id="teamFilter" class="w-full md:w-auto border-2 border-gray-100 p-1.5 md:p-2.5 rounded-lg text-xs md:text-sm font-bold outline-none focus:border-blue-500 bg-gray-50">
-                <option value="전체">전체 구단 일정</option>
-                <option value="KIA">KIA 타이거즈</option>
-                <option value="KT">KT 위즈</option>
-                <option value="LG">LG 트윈스</option>
-                <option value="NC">NC 다이노스</option>
-                <option value="SSG">SSG 랜더스</option>
-                <option value="두산">두산 베어스</option>
-                <option value="롯데">롯데 자이언츠</option>
-                <option value="삼성">삼성 라이온즈</option>
-                <option value="키움">키움 히어로즈</option>
-                <option value="한화">한화 이글스</option>
-            </select>
+            <div class="flex items-center justify-between w-full md:w-auto gap-2">
+                <div class="flex bg-gray-100 p-1 rounded-lg shrink-0">
+                    <button id="modeMonth" class="px-3 py-1.5 rounded-md text-xs font-bold bg-white shadow-sm text-blue-600 transition-all">월간</button>
+                    <button id="modeWeek" class="px-3 py-1.5 rounded-md text-xs font-bold text-gray-500 hover:text-gray-800 transition-all">주간</button>
+                </div>
+                <select id="teamFilter" class="flex-1 md:flex-none border-2 border-gray-100 p-1.5 rounded-lg text-xs md:text-sm font-bold bg-gray-50">
+                    <option value="전체">전체 구단</option>
+                    <option value="KIA">KIA</option><option value="KT">KT</option><option value="LG">LG</option><option value="NC">NC</option><option value="SSG">SSG</option><option value="두산">두산</option><option value="롯데">롯데</option><option value="삼성">삼성</option><option value="키움">키움</option><option value="한화">한화</option>
+                </select>
+            </div>
         </header>
-
-        <div class="grid grid-cols-7 mb-1 md:mb-2 text-center font-black text-gray-400 text-[0.6rem] md:text-xs uppercase tracking-widest px-0.5 md:px-0">
+        <div id="weekHeader" class="grid grid-cols-7 mb-1 text-center font-black text-gray-400 text-[0.6rem] md:text-xs uppercase px-0.5">
             <div class="text-red-400">Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div class="text-blue-400">Sat</div>
         </div>
-
-        <div id="calendar" class="grid grid-cols-7 gap-[1px] bg-gray-200 border border-gray-200 rounded-lg md:rounded-xl overflow-hidden pb-6 md:pb-0"></div>
+        <div id="calendar" class="w-full pb-6 md:pb-0"></div>
     </div>
-
 <script>
     const SUPABASE_URL = 'https://rqdwdortnbpkpipussah.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_72QYev7CliIOdaHVa9caFg_mm19QiZE';
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-    let allMatches = [];
-    let currentDate = new Date();
-    let holidays = {}; 
-    let loadedHolidayYear = null;
+    let allMatches = [], currentDate = new Date(), holidays = {}, loadedHolidayYear = null, viewMode = 'month';
+    const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
 
     async function fetchMatches() {
-        const { data, error } = await _supabase.from('kbo_matches').select('*').order('date', {ascending: true});
-        if (!error) {
-            allMatches = data;
-            renderCalendar();
-        }
+        const { data } = await _supabase.from('kbo_matches').select('*').order('date', {ascending: true});
+        allMatches = data || []; renderView();
     }
-
-    async function renderCalendar() {
-        const container = document.getElementById('calendar');
-        const filterValue = document.getElementById('teamFilter').value;
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth() + 1;
-        const monthStr = month.toString().padStart(2, '0');
-
+    async function loadHolidays(year) {
         if (year !== loadedHolidayYear) {
             try {
-                const DATA_GO_KR_KEY = '4b4ad3442715e2758dd90b80e40e0a219d74b6ca6f870ad85cdeb8a37709e073';
-                const url = `https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo?solYear=${year}&ServiceKey=${DATA_GO_KR_KEY}&_type=json&numOfRows=50`;
-                const res = await fetch(url);
+                // 공공데이터포털 API 연동
+                const res = await fetch(`https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo?solYear=${year}&ServiceKey=4b4ad3442715e2758dd90b80e40e0a219d74b6ca6f870ad85cdeb8a37709e073&_type=json&numOfRows=50`);
                 const json = await res.json();
-                
-                holidays = {}; 
                 const items = json.response?.body?.items?.item;
                 if (items) {
-                    const holidayArray = Array.isArray(items) ? items : [items];
-                    holidayArray.forEach(h => {
-                        const dateStr = String(h.locdate).replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3');
-                        holidays[dateStr] = h.dateName; 
-                    });
+                    holidays = {};
+                    (Array.isArray(items)?items:[items]).forEach(h => { holidays[String(h.locdate).replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')] = h.dateName; });
                 }
                 loadedHolidayYear = year;
-            } catch (e) { console.error("공휴일 로드 실패:", e); }
-        }
-
-        document.getElementById('monthTitle').innerText = `⚾️ ${year}년 ${month}월`;
-        container.innerHTML = '';
-        
-        const startDay = new Date(year, month - 1, 1).getDay();
-        const daysInMonth = new Date(year, month, 0).getDate();
-
-        for(let i = 0; i < startDay; i++) {
-            container.innerHTML += '<div class="bg-gray-50/40 min-h-[90px] md:min-h-[120px]"></div>';
-        }
-
-        for(let day = 1; day <= daysInMonth; day++) {
-            const dateStr = `${year}-${monthStr}-${day.toString().padStart(2, '0')}`;
-            const filtered = allMatches.filter(m => m.date === dateStr && (filterValue === '전체' || m.home.includes(filterValue) || m.away.includes(filterValue)));
-            
-            const currentDayOfWeek = new Date(year, month - 1, day).getDay();
-            const holidayName = holidays[dateStr];
-            
-            let dateColorClass = 'text-gray-700';
-            if (currentDayOfWeek === 0 || holidayName) dateColorClass = 'text-red-500';
-            else if (currentDayOfWeek === 6) dateColorClass = 'text-blue-500';
-
-            const holidayHtml = holidayName ? `<div class="text-[0.45rem] md:text-[0.6rem] font-normal text-red-500 leading-none mt-0.5 md:mt-0 md:inline block truncate px-[1px] md:ml-1">${holidayName}</div>` : '';
-            
-            let dayHtml = `<div class="bg-white p-0.5 md:p-2 min-h-[90px] md:min-h-[120px] flex flex-col">
-                <div class="mb-0.5 md:mb-1 border-b border-gray-100 pb-[1px] md:pb-0 text-center md:text-left">
-                    <span class="text-[0.7rem] md:text-sm font-black ${dateColorClass}">${day}</span>
-                    ${holidayHtml}
-                </div>`;
-            
-            filtered.forEach(m => {
-                let scoreHtml;
-                // 우취 식별 및 문자열 정리 (화면엔 '잠실(우취)' 대신 '잠실'만 나오게)
-                let isCancelled = m.stadium.includes("취소") || m.stadium.includes("우취");
-                let displayStadium = m.stadium.replace("(우취)", "").trim();
-                
-                if (isCancelled) {
-                    scoreHtml = `<span class="text-blue-500 font-bold text-[0.55rem] md:text-[0.65rem] bg-blue-50 px-1 py-[1px] rounded-[2px]">우취</span>`;
-                } else if (m.home_score !== null) {
-                    let hBg = m.home_score > m.away_score ? 'bg-red-600' : 'bg-gray-700';
-                    let aBg = m.away_score > m.home_score ? 'bg-red-600' : 'bg-gray-700';
-                    scoreHtml = `<span class="${hBg} text-white px-[3px] py-[1px] rounded-[2px]">${m.home_score}</span><span class="mx-[1px] text-gray-300 font-normal">:</span><span class="${aBg} text-white px-[3px] py-[1px] rounded-[2px]">${m.away_score}</span>`;
-                } else {
-                    scoreHtml = `<span class="text-gray-400 font-bold bg-gray-50 px-1 py-[1px] rounded-[2px]">vs</span>`;
-                }
-                
-                dayHtml += `
-                    <div class="bg-white border border-gray-100 rounded shadow-[0_1px_2px_rgba(0,0,0,0.02)] p-[2px] md:p-1 mb-[2px] md:mb-1 w-full flex flex-col justify-center items-center">
-                        <div class="flex justify-between items-center w-full leading-tight">
-                            <div class="flex-1 text-right truncate font-bold text-[0.55rem] md:text-xs text-gray-800">${m.home}</div>
-                            <div class="flex-none px-0.5 text-[0.5rem] md:text-xs whitespace-nowrap text-center font-bold font-mono">${scoreHtml}</div>
-                            <div class="flex-1 text-left truncate font-bold text-[0.55rem] md:text-xs text-gray-800">${m.away}</div>
-                        </div>
-                        <div class="text-[0.4rem] md:text-[0.6rem] text-gray-400 truncate mt-[1px] md:mt-[2px] tracking-tighter w-full text-center">
-                            📍${displayStadium} | ${m.time}
-                        </div>
-                    </div>`;
-            });
-            dayHtml += `</div>`;
-            container.innerHTML += dayHtml;
+            } catch(e) {}
         }
     }
+    function getMatchHTML(m, mode) {
+        const isUchwi = m.stadium.includes("우취");
+        const stadium = m.stadium.replace("(우취)", "").trim();
+        let scoreHtml;
+        if (isUchwi) scoreHtml = `<span class="text-blue-500 font-bold text-[0.6rem] md:text-xs bg-blue-50 px-1 py-0.5 rounded">우취</span>`;
+        else if (m.home_score !== null) {
+            const hB = m.home_score > m.away_score ? 'bg-red-600' : 'bg-gray-700';
+            const aB = m.away_score > m.home_score ? 'bg-red-600' : 'bg-gray-700';
+            scoreHtml = `<span class="${hB} text-white px-1.5 py-0.5 rounded text-[0.6rem] md:text-xs">${m.home_score}</span> : <span class="${aB} text-white px-1.5 py-0.5 rounded text-[0.6rem] md:text-xs">${m.away_score}</span>`;
+        } else scoreHtml = `<span class="text-gray-300 text-[0.6rem] md:text-xs">vs</span>`;
+        
+        const cardClass = mode === 'week' ? 'p-3 mb-2' : 'p-1 mb-1';
+        const txtSize = mode === 'week' ? 'text-sm md:text-base' : 'text-[0.6rem] md:text-xs';
 
-    document.getElementById('prevBtn').addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); });
-    document.getElementById('nextBtn').addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); });
-    document.getElementById('teamFilter').addEventListener('change', renderCalendar);
-    
+        return `<div class="bg-white border border-gray-100 rounded-lg ${cardClass} flex flex-col items-center shadow-sm">
+            <div class="flex justify-between items-center w-full font-bold ${txtSize}">
+                <div class="flex-1 text-right truncate">${m.home}</div><div class="px-2">${scoreHtml}</div><div class="flex-1 text-left truncate">${m.away}</div>
+            </div>
+            <div class="text-[0.5rem] md:text-[0.6rem] text-gray-400 mt-1">📍${stadium} | ${m.time}</div>
+        </div>`;
+    }
+    async function renderView() {
+        await loadHolidays(currentDate.getFullYear());
+        const container = document.getElementById('calendar');
+        const filter = document.getElementById('teamFilter').value;
+        container.innerHTML = '';
+        if (viewMode === 'month') {
+            const y = currentDate.getFullYear(), m = currentDate.getMonth() + 1, ms = String(m).padStart(2,'0');
+            document.getElementById('viewTitle').innerText = `${y}년 ${m}월`;
+            document.getElementById('weekHeader').classList.remove('hidden');
+            container.className = 'grid grid-cols-7 gap-[1px] bg-gray-200 border border-gray-200 rounded-lg overflow-hidden';
+            const startDay = new Date(y, m-1, 1).getDay(), days = new Date(y, m, 0).getDate();
+            for(let i=0; i<startDay; i++) container.innerHTML += '<div class="bg-gray-50/40 min-h-[100px] md:min-h-[130px]"></div>';
+            for(let d=1; d<=days; d++) {
+                const ds = `${y}-${ms}-${String(d).padStart(2,'0')}`;
+                const matches = allMatches.filter(mt => mt.date === ds && (filter === '전체' || mt.home.includes(filter) || mt.away.includes(filter)));
+                const dayOfWeek = new Date(y, m-1, d).getDay(), hName = holidays[ds];
+                let color = (dayOfWeek===0||hName)?'text-red-500':(dayOfWeek===6?'text-blue-500':'text-gray-700');
+                let dayDiv = `<div class="bg-white p-1 min-h-[100px] md:min-h-[130px] flex flex-col border-b border-gray-100">
+                    <div class="text-center md:text-left mb-1"><span class="text-xs md:text-sm font-black ${color}">${d}</span><span class="text-[0.45rem] text-red-500 ml-1 truncate">${hName||''}</span></div>`;
+                matches.forEach(mt => dayDiv += getMatchHTML(mt, 'month'));
+                container.innerHTML += dayDiv + `</div>`;
+            }
+        } else {
+            document.getElementById('weekHeader').classList.add('hidden');
+            container.className = 'flex flex-col gap-2 p-1 md:px-0';
+            const startOfWeek = new Date(currentDate); startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
+            document.getElementById('viewTitle').innerText = `${startOfWeek.getMonth()+1}.${startOfWeek.getDate()} ~ 주간 일정`;
+            for(let i=0; i<7; i++) {
+                const d = new Date(startOfWeek); d.setDate(startOfWeek.getDate()+i);
+                const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                const matches = allMatches.filter(mt => mt.date === ds && (filter === '전체' || mt.home.includes(filter) || mt.away.includes(filter)));
+                if(matches.length===0 && filter!=='전체') continue;
+                let dayDiv = `<div class="bg-gray-50/80 p-3 rounded-xl border border-gray-200">
+                    <div class="font-bold text-sm md:text-lg mb-2 ${i===0||holidays[ds]?'text-red-500':(i===6?'text-blue-500':'text-gray-800')}">${ds} (${dayNames[i]}) ${holidays[ds]||''}</div>`;
+                matches.length?matches.forEach(mt=>dayDiv+=getMatchHTML(mt,'week')):dayDiv+=`<div class="text-center text-gray-400 py-4 bg-white rounded-lg border border-dashed border-gray-200">경기 없음</div>`;
+                container.innerHTML += dayDiv + `</div>`;
+            }
+        }
+    }
+    document.getElementById('prevBtn').onclick = () => { viewMode==='month'?currentDate.setMonth(currentDate.getMonth()-1):currentDate.setDate(currentDate.getDate()-7); renderView(); };
+    document.getElementById('nextBtn').onclick = () => { viewMode==='month'?currentDate.setMonth(currentDate.getMonth()+1):currentDate.setDate(currentDate.getDate()+7); renderView(); };
+    document.getElementById('modeMonth').onclick = (e) => { viewMode='month'; e.target.className="px-3 py-1.5 rounded-md text-xs font-bold bg-white shadow-sm text-blue-600 transition-all"; document.getElementById('modeWeek').className="px-3 py-1.5 rounded-md text-xs font-bold text-gray-500"; renderView(); };
+    document.getElementById('modeWeek').onclick = (e) => { viewMode='week'; e.target.className="px-3 py-1.5 rounded-md text-xs font-bold bg-white shadow-sm text-blue-600 transition-all"; document.getElementById('modeMonth').className="px-3 py-1.5 rounded-md text-xs font-bold text-gray-500"; renderView(); };
+    document.getElementById('teamFilter').onchange = renderView;
     fetchMatches();
 </script>
 </body>
