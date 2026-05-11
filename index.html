@@ -7,20 +7,15 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* 기본 스타일 */
         .inning-cell { width: 22px; text-align: center; font-size: 0.65rem; border-right: 1px solid #f3f4f6; padding: 4px 0; }
         .rheb-cell { width: 26px; text-align: center; font-weight: bold; background-color: #f9fafb; font-size: 0.7rem; }
-        
-        /* 오늘 날짜 강조 */
         .today-highlight { background-color: #eff6ff !important; border: 2px solid #3b82f6 !important; position: relative; }
         .today-highlight::after { content: '오늘'; position: absolute; top: 2px; right: 4px; font-size: 0.55rem; color: #3b82f6; font-weight: 900; }
-        
-        /* 버튼 활성화/비활성화 스타일 */
         .btn-active { background-color: white !important; color: #2563eb !important; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .btn-inactive { color: #6b7280 !important; background-color: transparent !important; }
-
-        /* 스크롤바 숨기기 */
         ::-webkit-scrollbar { display: none; }
+        /* [추가] 승리팀 강조 스타일 */
+        .win-highlight { color: #ef4444 !important; font-weight: 900 !important; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen p-2 md:p-4 text-gray-800">
@@ -61,21 +56,17 @@
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
     let allMatches = [], currentDate = new Date(), viewMode = 'month';
-    
-    // [동적 날짜] 오늘 날짜 생성
     const now = new Date();
     const TODAY_STR = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
     async function fetchMatches() {
         const { data, error } = await _supabase.from('kbo_matches').select('*').order('date', {ascending: true});
-        if (error) console.error("데이터 로드 오류:", error);
         allMatches = data || []; 
         renderView();
     }
 
     function closeModal() { document.getElementById('detailModal').classList.add('hidden'); }
 
-    // [개선] 버튼 활성화 상태 업데이트
     function updateButtonUI() {
         const monthBtn = document.getElementById('modeMonth');
         const weekBtn = document.getElementById('modeWeek');
@@ -115,9 +106,9 @@
 
             modalBody.innerHTML = `
                 <div class="flex justify-between items-center mb-8 px-2">
-                    <div class="text-center"><div class="text-xl font-black">${m.away}</div><div class="text-[0.6rem] text-gray-400">AWAY</div></div>
+                    <div class="text-center"><div class="text-xl font-black ${m.away_score > m.home_score ? 'text-red-600' : ''}">${m.away}</div><div class="text-[0.6rem] text-gray-400">AWAY</div></div>
                     <div class="text-3xl font-black text-blue-600">${m.away_score} : ${m.home_score}</div>
-                    <div class="text-center"><div class="text-xl font-black">${m.home}</div><div class="text-[0.6rem] text-gray-400">HOME</div></div>
+                    <div class="text-center"><div class="text-xl font-black ${m.home_score > m.away_score ? 'text-red-600' : ''}">${m.home}</div><div class="text-[0.6rem] text-gray-400">HOME</div></div>
                 </div>
                 <div class="overflow-x-auto border rounded-xl shadow-sm">
                     <table class="w-full text-center">
@@ -129,20 +120,24 @@
                     </table>
                 </div>`;
         } else {
-            const isInterpark = ['두산', '키움'].includes(m.home);
-            const vendor = isInterpark ? '인터파크 티켓' : '티켓링크';
-            const url = isInterpark ? 'https://ticket.interpark.com/Contents/Sports/GoodsInfo?SportsCode=07001' : 'https://www.ticketlink.co.kr/sports/baseball';
-
-            modalBody.innerHTML = `<div class="text-center py-6"><div class="text-sm font-bold text-blue-500 mb-2">${m.date} ${m.time} 예정</div><div class="text-2xl font-black mb-10">${m.away} VS ${m.home}</div><div class="bg-gray-50 p-6 rounded-2xl border-2 border-dashed border-gray-200"><p class="text-gray-500 text-sm mb-4 font-medium">아직 시작 전인 경기입니다.</p><a href="${url}" target="_blank" class="block w-full py-3 rounded-xl font-black text-white ${isInterpark ? 'bg-slate-900' : 'bg-red-500'}">${vendor}에서 예매하기</a></div></div>`;
+            // [수정] 예매 페이지 선택 창 추가
+            modalBody.innerHTML = `
+                <div class="text-center py-6">
+                    <div class="text-sm font-bold text-blue-500 mb-2">${m.date} ${m.time} 예정</div>
+                    <div class="text-2xl font-black mb-8">${m.away} VS ${m.home}</div>
+                    <div class="space-y-3">
+                        <p class="text-gray-500 text-sm mb-4 font-medium italic">📍 ${m.stadium}</p>
+                        <a href="https://www.ticketlink.co.kr/sports/baseball" target="_blank" class="block w-full py-3 rounded-xl font-black text-white bg-red-500 hover:bg-red-600 transition-colors">티켓링크에서 예매하기</a>
+                        <a href="https://ticket.interpark.com/Contents/Sports/GoodsInfo?SportsCode=07001" target="_blank" class="block w-full py-3 rounded-xl font-black text-white bg-slate-900 hover:bg-slate-800 transition-colors">인터파크에서 예매하기</a>
+                    </div>
+                </div>`;
         }
         document.getElementById('detailModal').classList.remove('hidden');
     }
 
-    // [개선] 경기 리스트 HTML 생성
     function getMatchHTML(m, mode) {
         const isToday = m.date === TODAY_STR;
         const isUchwi = m.is_cancel === true;
-        
         const awayWin = m.home_score !== null && m.away_score > m.home_score;
         const homeWin = m.home_score !== null && m.home_score > m.away_score;
         
@@ -150,11 +145,13 @@
         if (isUchwi) {
             centerDisplay = `<span class="bg-red-50 text-red-600 px-1.5 rounded-md font-black text-[0.6rem] border border-red-200 mx-1">우천취소</span>`;
         } else if (m.home_score !== null) {
-            centerDisplay = `<span class="font-black mx-1.5 text-blue-700">${m.away_score}:${m.home_score}</span>`;
+            // [수정] 이긴 쪽 점수 빨간색 강조
+            centerDisplay = `<span class="font-black mx-1.5 text-blue-700">
+                <span class="${awayWin ? 'text-red-600' : ''}">${m.away_score}</span>:<span class="${homeWin ? 'text-red-600' : ''}">${m.home_score}</span>
+            </span>`;
         }
 
-        // [수정] 트로피 제거, 이긴 팀 굵게 강조만 유지
-        const teamStyle = (isWin) => isWin ? "font-black text-blue-900 scale-105" : "font-medium text-gray-500";
+        const teamStyle = (isWin) => isWin ? "font-black text-red-600 scale-105" : "font-medium text-gray-500";
 
         return `
         <div onclick="openDetail('${m.game_id}')" class="cursor-pointer bg-white border border-gray-100 rounded-lg p-2 mb-1.5 shadow-sm hover:border-blue-400 transition-all ${isToday ? 'today-highlight' : ''}">
@@ -167,7 +164,7 @@
                     ${m.home}<span class="text-[0.55rem] text-gray-300 ml-0.5 font-normal">(홈)</span>
                 </div>
             </div>
-            <div class="text-[0.5rem] text-gray-400 mt-1.5 text-center font-medium">📍 ${m.stadium} | ${m.time}</div>
+            <div class="text-[0.45rem] md:text-[0.5rem] text-gray-400 mt-1.5 text-center font-medium">📍 ${m.stadium} | ${m.time}</div>
         </div>`;
     }
 
@@ -182,15 +179,11 @@
             document.getElementById('viewTitle').innerText = `${y}년 ${m}월`;
             container.className = 'grid grid-cols-7 gap-1 md:gap-2';
             const startDay = new Date(y, m-1, 1).getDay(), days = new Date(y, m, 0).getDate();
-            
             for(let i=0; i<startDay; i++) container.innerHTML += '<div class="min-h-[80px] bg-gray-50/30 rounded-xl"></div>';
-            
             for(let d=1; d<=days; d++) {
                 const ds = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                 const isToday = ds === TODAY_STR;
                 const matches = allMatches.filter(mt => mt.date === ds && (filter === '전체' || mt.home === filter || mt.away === filter));
-                
-                // 공휴일 정보 확인
                 const holiday = matches.length > 0 ? matches[0].holiday_name : null;
                 const isSun = new Date(y, m-1, d).getDay() === 0;
 
@@ -200,17 +193,11 @@
                             <span class="text-xs font-black ${isSun || holiday ? 'text-red-500' : 'text-gray-800'}">${d}</span>
                             ${holiday ? `<span class="text-[0.5rem] font-bold text-red-400 truncate max-w-[45px]">${holiday}</span>` : ''}
                         </div>`;
-                
-                if (matches.length > 0) {
-                    matches.forEach(mt => dayDiv += getMatchHTML(mt, 'month'));
-                } else {
-                    // [개선] 경기 없는 날 표시
-                    dayDiv += `<div class="flex-1 flex items-center justify-center text-[0.6rem] text-gray-300 font-bold italic">경기 없는 날</div>`;
-                }
+                if (matches.length > 0) matches.forEach(mt => dayDiv += getMatchHTML(mt, 'month'));
+                else dayDiv += `<div class="flex-1 flex items-center justify-center text-[0.6rem] text-gray-300 font-bold italic">경기 없는 날</div>`;
                 container.innerHTML += dayDiv + `</div>`;
             }
         } else {
-            // 주간 뷰
             container.className = 'flex flex-col gap-3';
             const start = new Date(currentDate); start.setDate(currentDate.getDate() - currentDate.getDay());
             document.getElementById('viewTitle').innerText = `주간 일정`;
@@ -220,20 +207,9 @@
                 const isToday = ds === TODAY_STR;
                 const matches = allMatches.filter(mt => mt.date === ds && (filter === '전체' || mt.home === filter || mt.away === filter));
                 const holiday = matches.length > 0 ? matches[0].holiday_name : null;
-
-                let dayDiv = `
-                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 ${isToday ? 'today-highlight' : ''}">
-                        <div class="flex items-center gap-2 mb-3">
-                            <span class="font-black text-sm ${d.getDay() === 0 || holiday ? 'text-red-500' : 'text-gray-800'}">${ds}</span>
-                            ${holiday ? `<span class="bg-red-50 text-red-500 text-[10px] px-2 py-0.5 rounded-full font-bold">${holiday}</span>` : ''}
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">`;
-                
-                if (matches.length > 0) {
-                    matches.forEach(mt => dayDiv += getMatchHTML(mt, 'week'));
-                } else {
-                    dayDiv += `<div class="col-span-full py-4 text-center text-xs text-gray-300 font-bold italic">오늘은 경기가 없습니다.</div>`;
-                }
+                let dayDiv = `<div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 ${isToday ? 'today-highlight' : ''}"><div class="flex items-center gap-2 mb-3"><span class="font-black text-sm ${d.getDay() === 0 || holiday ? 'text-red-500' : 'text-gray-800'}">${ds}</span>${holiday ? `<span class="bg-red-50 text-red-500 text-[10px] px-2 py-0.5 rounded-full font-bold">${holiday}</span>` : ''}</div><div class="grid grid-cols-1 md:grid-cols-2 gap-2">`;
+                if (matches.length > 0) matches.forEach(mt => dayDiv += getMatchHTML(mt, 'week'));
+                else dayDiv += `<div class="col-span-full py-4 text-center text-xs text-gray-300 font-bold italic">오늘은 경기가 없습니다.</div>`;
                 container.innerHTML += dayDiv + `</div></div>`;
             }
         }
@@ -252,7 +228,6 @@
         renderView(); 
     };
     document.getElementById('teamFilter').onchange = renderView;
-
     fetchMatches();
 </script>
 </body>

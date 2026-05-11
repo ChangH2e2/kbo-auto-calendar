@@ -82,6 +82,10 @@ def get_kbo_data():
             stadium_cell = next((c for c in cells if c.get('Class') == 'stadium'), None)
             stadium_name = BeautifulSoup(stadium_cell.get('Text', '미정'), 'html.parser').get_text(strip=True) if stadium_cell else BeautifulSoup(cells[-2].get('Text', '미정'), 'html.parser').get_text(strip=True)
             
+            time_cell = next((c for c in cells if c.get('Class') == 'time'), None)
+            time_raw = time_cell.get('Text', '18:30') if time_cell else "18:30"
+            game_time = BeautifulSoup(time_raw, 'html.parser').get_text(strip=True)
+
             remark_text = cells[-1].get('Text', '')
             play_cell = next((c for c in cells if c.get('Class') == 'play'), None)
             
@@ -108,7 +112,7 @@ def get_kbo_data():
                     all_results.append({
                         "date": full_date, "home": home_team, "away": away_team,
                         "home_score": h_score, "away_score": a_score, "stadium": stadium_name.replace("(우천취소)", ""), 
-                        "time": "18:30", "game_id": game_id, "home_line": h_line, "away_line": a_line, 
+                        "time": game_time, "game_id": game_id, "home_line": h_line, "away_line": a_line, 
                         "home_rheb": h_rheb, "away_rheb": a_rheb, "is_cancel": is_cancel,
                         "holiday_name": holidays.get(full_date)
                     })
