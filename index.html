@@ -16,9 +16,9 @@
                 <button id="nextBtn" class="p-1.5 px-3 bg-gray-100 rounded-lg font-bold">▶</button>
             </div>
             <div class="flex items-center justify-between w-full md:w-auto gap-2">
-                <div class="flex bg-gray-100 p-1 rounded-lg shrink-0">
-                    <button id="modeMonth" class="px-3 py-1.5 rounded-md text-xs font-bold bg-white shadow-sm text-blue-600 transition-all">월간</button>
-                    <button id="modeWeek" class="px-3 py-1.5 rounded-md text-xs font-bold text-gray-500 hover:text-gray-800 transition-all">주간</button>
+                <div class="flex bg-gray-100 p-1 rounded-lg shrink-0 border border-gray-200">
+                    <button id="modeMonth" class="px-3 py-1 rounded-md text-xs font-bold bg-white shadow-sm text-blue-600">월간</button>
+                    <button id="modeWeek" class="px-3 py-1 rounded-md text-xs font-bold text-gray-500">주간</button>
                 </div>
                 <select id="teamFilter" class="flex-1 md:flex-none border-2 border-gray-100 p-1.5 rounded-lg text-xs md:text-sm font-bold bg-gray-50">
                     <option value="전체">전체 구단</option>
@@ -26,7 +26,7 @@
                 </select>
             </div>
         </header>
-        <div id="weekHeader" class="grid grid-cols-7 mb-1 text-center font-black text-gray-400 text-[0.6rem] md:text-xs uppercase px-0.5">
+        <div id="weekHeader" class="grid grid-cols-7 mb-1 text-center font-black text-gray-400 text-[0.6rem] md:text-xs">
             <div class="text-red-400">Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div class="text-blue-400">Sat</div>
         </div>
         <div id="calendar" class="w-full pb-6 md:pb-0"></div>
@@ -44,38 +44,36 @@
     }
     async function loadHolidays(year) {
         if (year !== loadedHolidayYear) {
-            try {
-                // 공공데이터포털 API 연동
-                const res = await fetch(`https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo?solYear=${year}&ServiceKey=4b4ad3442715e2758dd90b80e40e0a219d74b6ca6f870ad85cdeb8a37709e073&_type=json&numOfRows=50`);
-                const json = await res.json();
-                const items = json.response?.body?.items?.item;
-                if (items) {
-                    holidays = {};
-                    (Array.isArray(items)?items:[items]).forEach(h => { holidays[String(h.locdate).replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')] = h.dateName; });
-                }
-                loadedHolidayYear = year;
-            } catch(e) {}
+            const res = await fetch(`https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo?solYear=${year}&ServiceKey=4b4ad3442715e2758dd90b80e40e0a219d74b6ca6f870ad85cdeb8a37709e073&_type=json&numOfRows=50`);
+            const json = await res.json();
+            const items = json.response?.body?.items?.item;
+            if (items) {
+                holidays = {};
+                (Array.isArray(items)?items:[items]).forEach(h => { holidays[String(h.locdate).replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')] = h.dateName; });
+            }
+            loadedHolidayYear = year;
         }
     }
     function getMatchHTML(m, mode) {
-        const isUchwi = m.stadium.includes("우취");
-        const stadium = m.stadium.replace("(우취)", "").trim();
-        let scoreHtml;
-        if (isUchwi) scoreHtml = `<span class="text-blue-500 font-bold text-[0.6rem] md:text-xs bg-blue-50 px-1 py-0.5 rounded">우취</span>`;
-        else if (m.home_score !== null) {
-            const hB = m.home_score > m.away_score ? 'bg-red-600' : 'bg-gray-700';
-            const aB = m.away_score > m.home_score ? 'bg-red-600' : 'bg-gray-700';
-            scoreHtml = `<span class="${hB} text-white px-1.5 py-0.5 rounded text-[0.6rem] md:text-xs">${m.home_score}</span> : <span class="${aB} text-white px-1.5 py-0.5 rounded text-[0.6rem] md:text-xs">${m.away_score}</span>`;
-        } else scoreHtml = `<span class="text-gray-300 text-[0.6rem] md:text-xs">vs</span>`;
+        const isUchwi = m.stadium.includes("우천취소");
+        // 🚨 '우천취소' 반영 및 스코어 레이아웃 최적화
+        const score = isUchwi ? `<span class="text-red-500 font-bold text-[0.4rem] md:text-[0.6rem] bg-red-50 px-1 rounded border border-red-100">우천취소</span>` : 
+                    (m.home_score !== null ? `<span class="${m.home_score>m.away_score?'bg-red-600':'bg-gray-800'} text-white px-1 rounded text-[0.45rem] md:text-xs">${m.home_score}</span><span class="mx-0.5 text-gray-300">:</span><span class="${m.away_score>m.home_score?'bg-red-600':'bg-gray-700'} text-white px-1 rounded text-[0.45rem] md:text-xs">${m.away_score}</span>` : `<span class="text-gray-300 text-[0.45rem] md:text-xs font-bold">vs</span>`);
         
-        const cardClass = mode === 'week' ? 'p-3 mb-2' : 'p-1 mb-1';
-        const txtSize = mode === 'week' ? 'text-sm md:text-base' : 'text-[0.6rem] md:text-xs';
+        const stadium = m.stadium.replace("(우천취소)", "");
+        const clickLink = `https://www.google.com/search?q=${m.date}+${m.home}+${m.away}+야구+결과`;
+        
+        // 🚨 (홈) (원정) 표기 복구 및 초소형 폰트 적용
+        const txtSize = mode === 'week' ? 'text-sm md:text-base' : 'text-[0.4rem] md:text-[0.65rem]';
+        const cardClass = mode === 'week' ? 'p-3 mb-2' : 'p-[1px] md:p-1 mb-[1px] md:mb-1';
 
-        return `<div class="bg-white border border-gray-100 rounded-lg ${cardClass} flex flex-col items-center shadow-sm">
-            <div class="flex justify-between items-center w-full font-bold ${txtSize}">
-                <div class="flex-1 text-right truncate">${m.home}</div><div class="px-2">${scoreHtml}</div><div class="flex-1 text-left truncate">${m.away}</div>
+        return `<div onclick="window.open('${clickLink}')" class="cursor-pointer bg-white border border-gray-100 rounded ${cardClass} flex flex-col items-center shadow-sm hover:border-blue-300 transition-all">
+            <div class="flex justify-between items-center w-full leading-tight font-bold ${txtSize}">
+                <div class="flex-1 text-right truncate text-gray-800 tracking-tighter">${m.home}<span class="text-[0.35rem] md:text-[0.55rem] text-gray-400 font-normal ml-0.5">(홈)</span></div>
+                <div class="px-0.5">${score}</div>
+                <div class="flex-1 text-left truncate text-gray-800 tracking-tighter"><span class="text-[0.35rem] md:text-[0.55rem] text-gray-400 font-normal mr-0.5">(원)</span>${m.away}</div>
             </div>
-            <div class="text-[0.5rem] md:text-[0.6rem] text-gray-400 mt-1">📍${stadium} | ${m.time}</div>
+            <div class="text-[0.35rem] md:text-[0.55rem] text-gray-400 mt-0.5">📍${stadium} | ${m.time}</div>
         </div>`;
     }
     async function renderView() {
@@ -95,8 +93,8 @@
                 const matches = allMatches.filter(mt => mt.date === ds && (filter === '전체' || mt.home.includes(filter) || mt.away.includes(filter)));
                 const dayOfWeek = new Date(y, m-1, d).getDay(), hName = holidays[ds];
                 let color = (dayOfWeek===0||hName)?'text-red-500':(dayOfWeek===6?'text-blue-500':'text-gray-700');
-                let dayDiv = `<div class="bg-white p-1 min-h-[100px] md:min-h-[130px] flex flex-col border-b border-gray-100">
-                    <div class="text-center md:text-left mb-1"><span class="text-xs md:text-sm font-black ${color}">${d}</span><span class="text-[0.45rem] text-red-500 ml-1 truncate">${hName||''}</span></div>`;
+                let dayDiv = `<div class="bg-white p-0.5 min-h-[100px] md:min-h-[130px] flex flex-col border-b border-gray-100">
+                    <div class="text-center md:text-left mb-0.5"><span class="text-[0.65rem] md:text-sm font-black ${color}">${d}</span><span class="text-[0.4rem] text-red-400 ml-1 truncate inline-block max-w-[30px] md:max-w-none">${hName||''}</span></div>`;
                 matches.forEach(mt => dayDiv += getMatchHTML(mt, 'month'));
                 container.innerHTML += dayDiv + `</div>`;
             }
@@ -119,8 +117,15 @@
     }
     document.getElementById('prevBtn').onclick = () => { viewMode==='month'?currentDate.setMonth(currentDate.getMonth()-1):currentDate.setDate(currentDate.getDate()-7); renderView(); };
     document.getElementById('nextBtn').onclick = () => { viewMode==='month'?currentDate.setMonth(currentDate.getMonth()+1):currentDate.setDate(currentDate.getDate()+7); renderView(); };
-    document.getElementById('modeMonth').onclick = (e) => { viewMode='month'; e.target.className="px-3 py-1.5 rounded-md text-xs font-bold bg-white shadow-sm text-blue-600 transition-all"; document.getElementById('modeWeek').className="px-3 py-1.5 rounded-md text-xs font-bold text-gray-500"; renderView(); };
-    document.getElementById('modeWeek').onclick = (e) => { viewMode='week'; e.target.className="px-3 py-1.5 rounded-md text-xs font-bold bg-white shadow-sm text-blue-600 transition-all"; document.getElementById('modeMonth').className="px-3 py-1.5 rounded-md text-xs font-bold text-gray-500"; renderView(); };
+    
+    document.getElementById('modeMonth').onclick = () => { viewMode='month'; updateModeBtn(); renderView(); };
+    document.getElementById('modeWeek').onclick = () => { viewMode='week'; updateModeBtn(); renderView(); };
+    
+    function updateModeBtn() {
+        const mBtn = document.getElementById('modeMonth'), wBtn = document.getElementById('modeWeek');
+        if(viewMode==='month') { mBtn.className="px-3 py-1 rounded-md text-xs font-bold bg-white shadow-sm text-blue-600"; wBtn.className="px-3 py-1 rounded-md text-xs font-bold text-gray-500"; }
+        else { wBtn.className="px-3 py-1 rounded-md text-xs font-bold bg-white shadow-sm text-blue-600"; mBtn.className="px-3 py-1 rounded-md text-xs font-bold text-gray-500"; }
+    }
     document.getElementById('teamFilter').onchange = renderView;
     fetchMatches();
 </script>
