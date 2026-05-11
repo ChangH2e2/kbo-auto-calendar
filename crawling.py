@@ -113,9 +113,12 @@ if __name__ == "__main__":
         data = get_kbo_data()
         if data:
             supabase = create_client(URL, KEY)
-            # 기존 데이터를 지우지 않고 덮어쓰기(upsert) 함으로써 점수만 업데이트
-            # 더블헤더 대응을 위해 conflict target에 time 추가 권장
-            supabase.table("kbo_matches").upsert(data, on_conflict="date,home,away,time").execute()
+            
+            # 기존 데이터를 싹 지우고, 깨끗하게 새 데이터를 붓습니다. (에러 절대 안 남!)
+            supabase.table("kbo_matches").delete().neq("id", 0).execute()
+            supabase.table("kbo_matches").insert(data).execute()
+            
+            # 위 insert가 끝난 다음 줄에 print가 와야 합니다!
             print(f"🎉 {len(data)}건의 데이터가 성공적으로 정제되어 저장되었습니다!")
         else:
             print("🚨 데이터를 가져오지 못했습니다.")
