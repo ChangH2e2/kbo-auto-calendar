@@ -5,13 +5,23 @@ import re
 from supabase import create_client
 import os
 import sys
+from datetime import datetime
+from dotenv import load_dotenv
+
+# 환경 변수 로드 (.env 파일이 있으면 로드)
+load_dotenv()
 
 # 환경 변수 설정
 URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
 KEY = os.environ.get("SUPABASE_KEY", "").strip()
 
-def get_kbo_data():
-    print("📡 KBO 서버 데이터 정밀 분석 중... (태그 제거 및 스코어 확인)")
+def get_kbo_data(year=None, month=None):
+    if not year:
+        year = datetime.now().year
+    if not month:
+        month = datetime.now().strftime("%m")
+    
+    print(f"📡 KBO 서버 데이터 정밀 분석 중... ({year}년 {month}월)")
     api_url = "https://www.koreabaseball.com/ws/Schedule.asmx/GetScheduleList"
     headers = {
         "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
@@ -19,11 +29,16 @@ def get_kbo_data():
     }
     payload = {
         "leId": "1", "srIdList": "0,1,2,3,4,5,6,7,8,9", 
-        "seasonId": "2026", "gameMonth": "05", "teamId": ""
+        "seasonId": str(year), "gameMonth": str(month).zfill(2), "teamId": ""
     }
     
-    response = requests.post(api_url, data=payload, headers=headers)
-    rows = response.json().get('rows', [])
+    try:
+        response = requests.post(api_url, data=payload, headers=headers)
+        response.raise_for_status()
+        rows = response.json().get('rows', [])
+    except Exception as e:
+        print(f"🚨 API 호출 에러: {e}")
+        return []
     
     results = []
     curr_date = ""
@@ -79,7 +94,7 @@ def get_kbo_data():
                         print(f"📊 점수 획득: {away_team} {a_score} : {h_score} {home_team}")
 
                 results.append({
-                    "date": f"2026-{curr_date}",
+                    "date": f"{year}-{curr_date}",
                     "home": home_team,
                     "away": away_team,
                     "home_score": h_score,
@@ -99,7 +114,8 @@ if __name__ == "__main__":
         if data:
             supabase = create_client(URL, KEY)
             # 기존 데이터를 지우지 않고 덮어쓰기(upsert) 함으로써 점수만 업데이트
-            supabase.table("kbo_matches").upsert(data, on_conflict="date,home,away").execute()
+            # 더블헤더 대응을 위해 conflict target에 time 추가 권장
+            supabase.table("kbo_matches").upsert(data, on_conflict="date,home,away,time").execute()
             print(f"🎉 {len(data)}건의 데이터가 성공적으로 정제되어 저장되었습니다!")
         else:
             print("🚨 데이터를 가져오지 못했습니다.")
