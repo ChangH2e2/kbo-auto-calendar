@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KBO 실전 예매 캘린더 (DB 연동)</title>
+    <style>
+        :root { --primary-color: #2563eb; --home-bg: #eff6ff; --bg-color: #f1f5f9; --card-bg: #ffffff; --border-color: #e2e8f0; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg-color); margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 1100px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: var(--card-bg); padding: 15px 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .header h1 { margin: 0; font-size: 1.3rem; }
+        select { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); font-weight: bold; }
+        .calendar-wrapper { background: var(--card-bg); border-radius: 12px; padding: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow-x: auto; }
+        .calendar-header { display: grid; grid-template-columns: repeat(7, minmax(130px, 1fr)); text-align: center; font-weight: bold; margin-bottom: 10px; color: #64748b; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(130px, 1fr)); gap: 6px; }
+        .day-cell { background: #fff; border-radius: 8px; min-height: 120px; padding: 6px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 4px; }
+        .day-number { font-size: 0.85rem; font-weight: 800; text-align: right; margin-bottom: 4px; }
+        .sunday { color: #ef4444; } .saturday { color: #3b82f6; }
+        .match-box { font-size: 0.75rem; padding: 6px; border-radius: 6px; border: 1px solid var(--border-color); border-left: 4px solid #cbd5e1; }
+        .match-box.my-team { border-left-color: var(--primary-color); background-color: var(--home-bg); }
+        .match-title { font-weight: bold; margin-bottom: 2px; }
+        .match-info { color: #64748b; font-size: 0.7rem; margin-bottom: 4px; }
+        .btn-ticket { display: block; background: var(--primary-color); color: white; text-decoration: none; padding: 4px; border-radius: 4px; text-align: center; font-weight: bold; font-size: 0.7rem; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>🗓 KBO 스마트 예매 캘린더 (Auto)</h1>
+        <select id="teamSelect">
+            <option value="ALL">⚾️ 전체 구단 일정 보기</option>
+            <option value="삼성">삼성 라이온즈</option><option value="KIA">KIA 타이거즈</option>
+            <option value="LG">LG 트윈스</option><option value="두산">두산 베어스</option>
+            <option value="롯데">롯데 자이언츠</option><option value="SSG">SSG 랜더스</option>
+            <option value="NC">NC 다이노스</option><option value="KT">KT 위즈</option>
+            <option value="키움">키움 히어로즈</option><option value="한화">한화 이글스</option>
+        </select>
+    </div>
+    <div class="calendar-wrapper">
+        <div class="calendar-header">
+            <div class="sunday">일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div class="saturday">토</div>
+        </div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+    </div>
+</div>
+
+<script>
+    // 🚨 여기에 창희님의 Supabase 주소와 키를 꼭 넣어주세요! (따옴표 유지)
+    const SUPABASE_URL = "YOUR_SUPABASE_URL";
+    const SUPABASE_KEY = "YOUR_SUPABASE_ANON_KEY";
+
+    let allMatches = [];
+    const stadiumMap = { "삼성": "대구", "KIA": "광주", "LG": "잠실", "두산": "잠실", "롯데": "사직", "SSG": "문학", "NC": "창원", "KT": "수원", "키움": "고척", "한화": "대전" };
+
+    // Supabase DB에서 데이터 가져오기!
+    async function fetchMatchesFromDB() {
+        try {
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/kbo_matches?select=*`, {
+                headers: {
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": `Bearer ${SUPABASE_KEY}`
+                }
+            });
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error("DB 접속 에러:", error);
+            return [];
+        }
+    }
+
+    function render() {
+        const grid = document.getElementById("calendarGrid");
+        const team = document.getElementById("teamSelect").value;
+        grid.innerHTML = "";
+
+        // 2026년 5월 달력 기준 (1일이 금요일이므로 빈칸 5개 생성)
+        for(let i=0; i<5; i++) grid.appendChild(document.createElement("div"));
+
+        for (let d = 1; d <= 31; d++) {
+            const dateStr = `2026-05-${String(d).padStart(2, '0')}`;
+            const cell = document.createElement("div");
+            cell.className = "day-cell";
+            
+            const dayOfWeek = new Date(dateStr).getDay();
+            const dayClass = dayOfWeek === 0 ? "sunday" : (dayOfWeek === 6 ? "saturday" : "");
+            cell.innerHTML = `<div class="day-number ${dayClass}">${d}</div>`;
+
+            // DB에서 가져온 데이터로 필터링
+            const todayMatches = allMatches.filter(m => m.date === dateStr && (team === "ALL" || m.home === team || m.away === team));
+            
+            todayMatches.forEach(m => {
+                const std = m.stadium === "-" ? (stadiumMap[m.home] || "구장미정") : m.stadium;
+                const isMyTeam = (team !== "ALL");
+                const matchBox = document.createElement("div");
+                matchBox.className = `match-box ${isMyTeam ? 'my-team' : ''}`;
+                matchBox.innerHTML = `
+                    <div class="match-title">${m.away} vs ${m.home}</div>
+                    <div class="match-info">📍${std} | ⏰${m.time}</div>
+                    <a href="#" class="btn-ticket">예매하기</a>
+                `;
+                cell.appendChild(matchBox);
+            });
+            grid.appendChild(cell);
+        }
+    }
+
+    // 앱 시작 시 딱 한 번만 DB에서 데이터를 불러옵니다.
+    async function initApp() {
+        document.getElementById("calendarGrid").innerHTML = "<div style='grid-column: span 7; text-align: center; padding: 20px;'>데이터베이스에서 최신 일정을 불러오는 중... ⚾️</div>";
+        allMatches = await fetchMatchesFromDB();
+        render();
+    }
+
+    document.getElementById("teamSelect").addEventListener("change", render);
+    initApp();
+</script>
+</body>
+</html>
