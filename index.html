@@ -2,29 +2,22 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>⚾️ KBO 스마트 캘린더</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background-color: #e5e7eb; }
-        .calendar-day { min-height: 160px; background-color: white; padding: 6px; }
-        .match-card { font-size: 0.72rem; padding: 6px; border-radius: 6px; margin-top: 4px; border: 1px solid #e5e7eb; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-        .score-badge { background-color: #1f2937; color: white; padding: 1px 4px; border-radius: 4px; font-weight: 800; }
-        .stadium-info { color: #9ca3af; font-size: 0.65rem; margin-top: 4px; display: block; border-top: 1px dashed #f3f4f6; padding-top: 4px; }
-    </style>
 </head>
-<body class="bg-gray-50 min-h-screen p-4">
+<body class="bg-gray-100 md:bg-gray-50 min-h-screen md:p-4">
     <div class="max-w-6xl mx-auto">
-        <header class="bg-white p-5 rounded-xl shadow-sm mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
-            <div class="flex items-center gap-4">
-                <button id="prevBtn" class="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-bold">◀</button>
-                <div class="text-center">
-                    <h1 id="monthTitle" class="text-2xl font-black text-gray-800 underline decoration-blue-500 decoration-4">⚾️ KBO 일정 로딩중...</h1>
+        <header class="bg-white p-3 md:p-5 md:rounded-xl shadow-sm mb-2 md:mb-6 flex flex-col md:flex-row justify-between items-center gap-3 sticky top-0 z-10 md:static">
+            <div class="flex items-center justify-between w-full md:w-auto gap-2 md:gap-4">
+                <button id="prevBtn" class="p-2 px-3 md:px-4 bg-gray-100 hover:bg-gray-200 rounded-lg font-bold">◀</button>
+                <div class="text-center flex-1 md:flex-none">
+                    <h1 id="monthTitle" class="text-lg md:text-2xl font-black text-gray-800 underline decoration-blue-500 decoration-4">⚾️ KBO 일정...</h1>
                 </div>
-                <button id="nextBtn" class="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-bold">▶</button>
+                <button id="nextBtn" class="p-2 px-3 md:px-4 bg-gray-100 hover:bg-gray-200 rounded-lg font-bold">▶</button>
             </div>
-            <select id="teamFilter" class="border-2 border-gray-100 p-2 rounded-lg text-sm font-bold outline-none focus:border-blue-500 transition-all">
+            <select id="teamFilter" class="w-full md:w-auto border-2 border-gray-100 p-2 md:p-2.5 rounded-lg text-sm font-bold outline-none focus:border-blue-500 bg-gray-50">
                 <option value="전체">전체 구단 일정</option>
                 <option value="KIA">KIA 타이거즈</option>
                 <option value="KT">KT 위즈</option>
@@ -39,10 +32,11 @@
             </select>
         </header>
 
-        <div class="grid grid-cols-7 mb-2 text-center font-black text-gray-400 text-xs uppercase tracking-widest">
+        <div class="grid grid-cols-7 mb-1 md:mb-2 text-center font-black text-gray-400 text-[0.65rem] md:text-xs uppercase tracking-widest px-0.5 md:px-0">
             <div class="text-red-400">Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div class="text-blue-400">Sat</div>
         </div>
-        <div id="calendar" class="calendar-grid rounded-xl overflow-hidden shadow-lg border border-gray-200"></div>
+
+        <div id="calendar" class="grid grid-cols-7 gap-[1px] bg-gray-200 border border-gray-200 md:rounded-xl overflow-hidden pb-6 md:pb-0"></div>
     </div>
 
 <script>
@@ -52,8 +46,6 @@
 
     let allMatches = [];
     let currentDate = new Date();
-    
-    // API로 불러온 공휴일 정보를 캐싱해둘 변수
     let holidays = {}; 
     let loadedHolidayYear = null;
 
@@ -72,28 +64,40 @@
         const month = currentDate.getMonth() + 1;
         const monthStr = month.toString().padStart(2, '0');
 
-        // 연도가 바뀌었을 때만 공휴일 API를 새로 호출 (최적화)
+        // 🌟 공공데이터포털 공휴일 API 연동
         if (year !== loadedHolidayYear) {
             try {
-                const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/KR`);
-                const data = await res.json();
-                holidays = {};
-                data.forEach(h => { holidays[h.date] = h.localName; });
+                // 전달해주신 API 키 적용
+                const DATA_GO_KR_KEY = '4b4ad3442715e2758dd90b80e40e0a219d74b6ca6f870ad85cdeb8a37709e073';
+                const url = `https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo?solYear=${year}&ServiceKey=${DATA_GO_KR_KEY}&_type=json&numOfRows=50`;
+                
+                const res = await fetch(url);
+                const json = await res.json();
+                
+                holidays = {}; 
+                const items = json.response?.body?.items?.item;
+                if (items) {
+                    const holidayArray = Array.isArray(items) ? items : [items];
+                    holidayArray.forEach(h => {
+                        const dateStr = String(h.locdate).replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3');
+                        holidays[dateStr] = h.dateName; 
+                    });
+                }
                 loadedHolidayYear = year;
-            } catch (e) {
-                console.error("공휴일 정보를 불러오는 데 실패했습니다.");
+            } catch (e) { 
+                console.error("공휴일 로드 실패:", e); 
             }
         }
 
-        document.getElementById('monthTitle').innerText = `⚾️ KBO ${year}년 ${month}월`;
+        document.getElementById('monthTitle').innerText = `⚾️ ${year}년 ${month}월`;
         container.innerHTML = '';
         
         const startDay = new Date(year, month - 1, 1).getDay();
         const daysInMonth = new Date(year, month, 0).getDate();
 
-        // 첫 날 전까지의 빈 칸
+        // 1일 전 빈 칸
         for(let i = 0; i < startDay; i++) {
-            container.innerHTML += '<div class="calendar-day bg-gray-50/50"></div>';
+            container.innerHTML += '<div class="bg-gray-50/40 min-h-[80px] md:min-h-[140px]"></div>';
         }
 
         // 날짜 채우기
@@ -101,39 +105,67 @@
             const dateStr = `${year}-${monthStr}-${day.toString().padStart(2, '0')}`;
             const filtered = allMatches.filter(m => m.date === dateStr && (filterValue === '전체' || m.home.includes(filterValue) || m.away.includes(filterValue)));
             
-            // 공휴일 여부 체크
+            const currentDayOfWeek = new Date(year, month - 1, day).getDay();
             const holidayName = holidays[dateStr];
-            const isWeekendOrHoliday = (day % 7 === (7 - startDay) % 7) || holidayName; // 일요일이거나 공휴일
-            const isSaturday = (day % 7 === (8 - startDay) % 7); // 토요일
-
-            let dateColorClass = 'text-gray-400';
-            if (isWeekendOrHoliday) dateColorClass = 'text-red-500';
-            else if (isSaturday) dateColorClass = 'text-blue-500';
-
-            // 공휴일이면 날짜 옆에 작은 글씨로 이름 표시
-            const holidayHtml = holidayName ? `<span class="text-[0.6rem] font-normal text-red-500 ml-1 bg-red-50 px-1 rounded">${holidayName}</span>` : '';
             
-            let dayHtml = `<div class="calendar-day"><div class="mb-1"><span class="text-sm font-black ${dateColorClass}">${day}</span>${holidayHtml}</div>`;
+            let dateColorClass = 'text-gray-700';
+            if (currentDayOfWeek === 0 || holidayName) dateColorClass = 'text-red-500';
+            else if (currentDayOfWeek === 6) dateColorClass = 'text-blue-500';
+
+            const holidayHtml = holidayName ? `<div class="text-[0.45rem] md:text-[0.6rem] font-normal text-red-500 leading-none md:ml-1 mt-0.5 md:mt-0 md:inline block truncate px-0.5">${holidayName}</div>` : '';
+            
+            let dayHtml = `<div class="bg-white p-1 md:p-2 min-h-[80px] md:min-h-[140px] flex flex-col">
+                <div class="mb-1 border-b border-gray-100 pb-0.5 md:border-none md:pb-0 text-center md:text-left">
+                    <span class="text-[0.75rem] md:text-sm font-black ${dateColorClass}">${day}</span>
+                    ${holidayHtml}
+                </div>`;
             
             filtered.forEach(m => {
-                let score;
-                if (m.stadium.includes("취소")) {
-                    score = `<span class="text-red-500 font-black text-[0.65rem]">우천취소</span>`;
-                } else if (m.home_score !== null) {
-                    score = `<span class="score-badge">${m.home_score}</span> : <span class="score-badge">${m.away_score}</span>`;
-                } else {
-                    score = `<span class="text-gray-300 font-bold">vs</span>`;
+                let scoreMobile, scorePc;
+                
+                if (m.stadium.includes("취소") || m.stadium.includes("우취")) {
+                    scoreMobile = `<div class="text-blue-500 font-bold text-center py-1 bg-blue-50/50 rounded">우취</div>`;
+                    scorePc = `<span class="text-blue-500 font-black text-xs bg-blue-50 px-2 py-0.5 rounded">우취</span>`;
+                } 
+                else if (m.home_score !== null) {
+                    let hMobileStyle = m.home_score > m.away_score ? 'font-black text-gray-900' : 'font-medium text-gray-400';
+                    let aMobileStyle = m.away_score > m.home_score ? 'font-black text-gray-900' : 'font-medium text-gray-400';
+                    let hPcBg = m.home_score > m.away_score ? 'bg-red-600' : 'bg-gray-800';
+                    let aPcBg = m.away_score > m.home_score ? 'bg-red-600' : 'bg-gray-800';
+
+                    scoreMobile = `
+                        <div class="flex justify-between items-center"><span class="${hMobileStyle} tracking-tighter">${m.home}</span><span class="${hMobileStyle}">${m.home_score}</span></div>
+                        <div class="flex justify-between items-center mt-[1px]"><span class="${aMobileStyle} tracking-tighter">${m.away}</span><span class="${aMobileStyle}">${m.away_score}</span></div>
+                    `;
+                    scorePc = `<span class="${hPcBg} text-white px-1.5 py-0.5 rounded-sm font-bold text-xs">${m.home_score}</span> <span class="text-gray-300 mx-0.5">:</span> <span class="${aPcBg} text-white px-1.5 py-0.5 rounded-sm font-bold text-xs">${m.away_score}</span>`;
+                } 
+                else {
+                    scoreMobile = `
+                        <div class="flex justify-between items-center"><span class="font-bold text-gray-700 tracking-tighter">${m.home}</span><span class="text-[0.45rem] text-gray-300">vs</span></div>
+                        <div class="flex justify-between items-center mt-[1px]"><span class="font-bold text-gray-700 tracking-tighter">${m.away}</span><span></span></div>
+                    `;
+                    scorePc = `<span class="text-gray-400 font-bold text-xs bg-gray-50 px-2 py-0.5 rounded">vs</span>`;
                 }
                 
-                dayHtml += `
-                    <div class="match-card">
-                        <div class="flex justify-between items-center gap-1">
-                            <span class="font-bold text-gray-700 whitespace-nowrap">${m.home}<span class="text-[0.55rem] text-gray-400 font-normal ml-0.5">(홈)</span></span>
-                            <div class="flex-1 text-center">${score}</div>
-                            <span class="font-bold text-gray-700 whitespace-nowrap"><span class="text-[0.55rem] text-gray-400 font-normal mr-0.5">(원정)</span>${m.away}</span>
+                const mobileHtml = `
+                    <div class="md:hidden w-full bg-gray-50/80 rounded mb-1 border border-gray-100 overflow-hidden flex-1 flex flex-col justify-center">
+                        <div class="py-0.5 px-1 flex flex-col text-[0.65rem]">
+                            ${scoreMobile}
                         </div>
-                        <span class="stadium-info">📍 ${m.stadium} | ${m.time}</span>
+                        <div class="bg-gray-100 text-[0.45rem] text-center text-gray-400 py-[2px] truncate px-0.5 font-medium">${m.stadium}</div>
                     </div>`;
+
+                const pcHtml = `
+                    <div class="hidden md:block bg-white border border-gray-200 rounded-lg p-1.5 mb-1 shadow-sm hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-center mb-1">
+                            <div class="flex-1 text-right whitespace-nowrap"><span class="font-bold text-gray-800 text-[0.7rem]">${m.home}</span><span class="text-[0.55rem] text-gray-400 ml-0.5">(홈)</span></div>
+                            <div class="w-16 text-center mx-1">${scorePc}</div>
+                            <div class="flex-1 text-left whitespace-nowrap"><span class="text-[0.55rem] text-gray-400 mr-0.5">(원)</span><span class="font-bold text-gray-800 text-[0.7rem]">${m.away}</span></div>
+                        </div>
+                        <div class="text-center text-[0.6rem] text-gray-500">📍 ${m.stadium} | ${m.time}</div>
+                    </div>`;
+
+                dayHtml += mobileHtml + pcHtml;
             });
             dayHtml += `</div>`;
             container.innerHTML += dayHtml;
