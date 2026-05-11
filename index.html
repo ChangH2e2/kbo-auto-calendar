@@ -26,11 +26,16 @@
             </div>
             <select id="teamFilter" class="border-2 border-gray-100 p-2 rounded-lg text-sm font-bold outline-none focus:border-blue-500 transition-all">
                 <option value="전체">전체 구단 일정</option>
-                <option value="삼성">삼성</option> <option value="LG">LG</option>
-                <option value="SSG">SSG</option> <option value="NC">NC</option>
-                <option value="두산">두산</option> <option value="KIA">KIA</option>
-                <option value="롯데">롯데</option> <option value="한화">한화</option>
-                <option value="키움">키움</option> <option value="KT">KT</option>
+                <option value="KIA">KIA 타이거즈</option>
+                <option value="KT">KT 위즈</option>
+                <option value="LG">LG 트윈스</option>
+                <option value="NC">NC 다이노스</option>
+                <option value="SSG">SSG 랜더스</option>
+                <option value="두산">두산 베어스</option>
+                <option value="롯데">롯데 자이언츠</option>
+                <option value="삼성">삼성 라이온즈</option>
+                <option value="키움">키움 히어로즈</option>
+                <option value="한화">한화 이글스</option>
             </select>
         </header>
 
@@ -41,13 +46,16 @@
     </div>
 
 <script>
-    // 창희님의 API 키가 적용된 수파베이스 연결
     const SUPABASE_URL = 'https://rqdwdortnbpkpipussah.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_72QYev7CliIOdaHVa9caFg_mm19QiZE';
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let allMatches = [];
     let currentDate = new Date();
+    
+    // API로 불러온 공휴일 정보를 캐싱해둘 변수
+    let holidays = {}; 
+    let loadedHolidayYear = null;
 
     async function fetchMatches() {
         const { data, error } = await _supabase.from('kbo_matches').select('*').order('date', {ascending: true});
@@ -57,12 +65,25 @@
         }
     }
 
-    function renderCalendar() {
+    async function renderCalendar() {
         const container = document.getElementById('calendar');
         const filterValue = document.getElementById('teamFilter').value;
         const year = currentDate.getFullYear();
         const month = currentDate.getMonth() + 1;
         const monthStr = month.toString().padStart(2, '0');
+
+        // 연도가 바뀌었을 때만 공휴일 API를 새로 호출 (최적화)
+        if (year !== loadedHolidayYear) {
+            try {
+                const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/KR`);
+                const data = await res.json();
+                holidays = {};
+                data.forEach(h => { holidays[h.date] = h.localName; });
+                loadedHolidayYear = year;
+            } catch (e) {
+                console.error("공휴일 정보를 불러오는 데 실패했습니다.");
+            }
+        }
 
         document.getElementById('monthTitle').innerText = `⚾️ KBO ${year}년 ${month}월`;
         container.innerHTML = '';
@@ -70,19 +91,32 @@
         const startDay = new Date(year, month - 1, 1).getDay();
         const daysInMonth = new Date(year, month, 0).getDate();
 
+        // 첫 날 전까지의 빈 칸
         for(let i = 0; i < startDay; i++) {
             container.innerHTML += '<div class="calendar-day bg-gray-50/50"></div>';
         }
 
+        // 날짜 채우기
         for(let day = 1; day <= daysInMonth; day++) {
             const dateStr = `${year}-${monthStr}-${day.toString().padStart(2, '0')}`;
             const filtered = allMatches.filter(m => m.date === dateStr && (filterValue === '전체' || m.home.includes(filterValue) || m.away.includes(filterValue)));
             
-            let dayHtml = `<div class="calendar-day"><span class="text-sm font-black ${day%7===(7-startDay)%7?'text-blue-500':(day%7===(8-startDay)%7?'text-red-500':'text-gray-400')}">${day}</span>`;
+            // 공휴일 여부 체크
+            const holidayName = holidays[dateStr];
+            const isWeekendOrHoliday = (day % 7 === (7 - startDay) % 7) || holidayName; // 일요일이거나 공휴일
+            const isSaturday = (day % 7 === (8 - startDay) % 7); // 토요일
+
+            let dateColorClass = 'text-gray-400';
+            if (isWeekendOrHoliday) dateColorClass = 'text-red-500';
+            else if (isSaturday) dateColorClass = 'text-blue-500';
+
+            // 공휴일이면 날짜 옆에 작은 글씨로 이름 표시
+            const holidayHtml = holidayName ? `<span class="text-[0.6rem] font-normal text-red-500 ml-1 bg-red-50 px-1 rounded">${holidayName}</span>` : '';
+            
+            let dayHtml = `<div class="calendar-day"><div class="mb-1"><span class="text-sm font-black ${dateColorClass}">${day}</span>${holidayHtml}</div>`;
             
             filtered.forEach(m => {
                 let score;
-                // 우천취소 로직 반영
                 if (m.stadium.includes("취소")) {
                     score = `<span class="text-red-500 font-black text-[0.65rem]">우천취소</span>`;
                 } else if (m.home_score !== null) {
@@ -94,9 +128,9 @@
                 dayHtml += `
                     <div class="match-card">
                         <div class="flex justify-between items-center gap-1">
-                            <span class="font-bold text-gray-700">${m.home}</span>
+                            <span class="font-bold text-gray-700 whitespace-nowrap">${m.home}<span class="text-[0.55rem] text-gray-400 font-normal ml-0.5">(홈)</span></span>
                             <div class="flex-1 text-center">${score}</div>
-                            <span class="font-bold text-gray-700">${m.away}</span>
+                            <span class="font-bold text-gray-700 whitespace-nowrap"><span class="text-[0.55rem] text-gray-400 font-normal mr-0.5">(원정)</span>${m.away}</span>
                         </div>
                         <span class="stadium-info">📍 ${m.stadium} | ${m.time}</span>
                     </div>`;
