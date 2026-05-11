@@ -1,0 +1,22 @@
+name: KBO-Bot
+on:
+  schedule:
+    - cron: '0 21 * * *' # 한국 시간 매일 새벽 6시 실행
+  workflow_dispatch: # 직접 버튼 눌러서 실행 가능하게 함
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/python-setup@v4
+        with:
+          python-version: '3.9'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run Crawler
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python crawling.py
