@@ -3,16 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⚾️ KBO 2026 스마트 캘린더</title>
+    <title>⚾️ KBO 스마트 캘린더</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background-color: #e5e7eb; }
         .calendar-day { min-height: 160px; background-color: white; padding: 6px; }
-        .match-card { 
-            font-size: 0.72rem; padding: 6px; border-radius: 6px; margin-top: 4px; 
-            border: 1px solid #e5e7eb; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        }
+        .match-card { font-size: 0.72rem; padding: 6px; border-radius: 6px; margin-top: 4px; border: 1px solid #e5e7eb; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
         .score-badge { background-color: #1f2937; color: white; padding: 1px 4px; border-radius: 4px; font-weight: 800; }
         .stadium-info { color: #9ca3af; font-size: 0.65rem; margin-top: 4px; display: block; border-top: 1px dashed #f3f4f6; padding-top: 4px; }
     </style>
@@ -20,23 +17,21 @@
 <body class="bg-gray-50 min-h-screen p-4">
     <div class="max-w-6xl mx-auto">
         <header class="bg-white p-5 rounded-xl shadow-sm mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
-            <div>
-                <h1 class="text-xl font-black text-gray-800 underline decoration-blue-500 decoration-4">⚾️ KBO <span id="currentYear">2026</span> 일정 & 결과</h1>
-                <p class="text-xs text-gray-400 mt-1">실시간 경기 결과 및 예매 정보 (Home vs Away)</p>
+            <div class="flex items-center gap-4">
+                <button id="prevBtn" class="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-bold">◀</button>
+                <div class="text-center">
+                    <h1 id="monthTitle" class="text-2xl font-black text-gray-800 underline decoration-blue-500 decoration-4">⚾️ KBO 일정 로딩중...</h1>
+                </div>
+                <button id="nextBtn" class="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-bold">▶</button>
             </div>
-            <div class="flex items-center gap-2">
-                <button id="prevMonth" class="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">◀️</button>
-                <span id="viewMonth" class="text-lg font-black min-w-[80px] text-center">2026.05</span>
-                <button id="nextMonth" class="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">▶️</button>
-                <select id="teamFilter" class="ml-4 border-2 border-gray-100 p-2 rounded-lg text-sm font-bold outline-none focus:border-blue-500 transition-all">
-                    <option value="전체">전체 구단</option>
-                    <option value="삼성">삼성</option> <option value="LG">LG</option>
-                    <option value="SSG">SSG</option> <option value="NC">NC</option>
-                    <option value="두산">두산</option> <option value="KIA">KIA</option>
-                    <option value="롯데">롯데</option> <option value="한화">한화</option>
-                    <option value="키움">키움</option> <option value="KT">KT</option>
-                </select>
-            </div>
+            <select id="teamFilter" class="border-2 border-gray-100 p-2 rounded-lg text-sm font-bold outline-none focus:border-blue-500 transition-all">
+                <option value="전체">전체 구단 일정</option>
+                <option value="삼성">삼성</option> <option value="LG">LG</option>
+                <option value="SSG">SSG</option> <option value="NC">NC</option>
+                <option value="두산">두산</option> <option value="KIA">KIA</option>
+                <option value="롯데">롯데</option> <option value="한화">한화</option>
+                <option value="키움">키움</option> <option value="KT">KT</option>
+            </select>
         </header>
 
         <div class="grid grid-cols-7 mb-2 text-center font-black text-gray-400 text-xs uppercase tracking-widest">
@@ -47,50 +42,50 @@
 
 <script>
     const SUPABASE_URL = 'https://rqdwdortnbpkpipussah.supabase.co';
-    const SUPABASE_KEY = '여기에_창희님의_ANON_KEY_입력';
+    const SUPABASE_KEY = 'sb_publishable_72QYev7CliIOdaHVa9caFg_mm19QiZE';
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    let currentDate = new Date(); // 현재 날짜 기준
     let allMatches = [];
+    let currentDate = new Date(); // 현재 날짜를 기준으로 시작
 
-    async function fetchAllData() {
+    async function fetchMatches() {
         const { data, error } = await _supabase.from('kbo_matches').select('*').order('date', {ascending: true});
-        if (error) {
-            console.error('Data fetch error:', error);
-            return;
+        if (!error) {
+            allMatches = data;
+            renderCalendar();
         }
-        allMatches = data;
-        renderCalendar();
     }
 
     function renderCalendar() {
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
-        const filterValue = document.getElementById('teamFilter').value;
-        
-        document.getElementById('currentYear').innerText = year;
-        document.getElementById('viewMonth').innerText = `${year}.${(month + 1).toString().padStart(2, '0')}`;
-
         const container = document.getElementById('calendar');
+        const filterValue = document.getElementById('teamFilter').value;
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth() + 1; // 1~12월
+        const monthStr = month.toString().padStart(2, '0');
+
+        // 상단 제목 업데이트
+        document.getElementById('monthTitle').innerText = `⚾️ KBO ${year}년 ${month}월`;
+
         container.innerHTML = '';
         
-        const firstDay = new Date(year, month, 1).getDay(); // 0: Sun, 1: Mon, ...
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        // 해당 월의 첫째 날 요일 (0:일요일 ~ 6:토요일)과 총 일수 계산
+        const startDay = new Date(year, month - 1, 1).getDay();
+        const daysInMonth = new Date(year, month, 0).getDate();
 
-        // 빈 칸 채우기
-        for(let i=0; i<firstDay; i++) container.innerHTML += '<div class="calendar-day bg-gray-50/50"></div>';
+        // 1. 시작일 전까지 빈 칸 채우기
+        for(let i = 0; i < startDay; i++) {
+            container.innerHTML += '<div class="calendar-day bg-gray-50/50"></div>';
+        }
 
-        for(let day=1; day<=daysInMonth; day++) {
-            const dateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-            const dayOfWeek = new Date(year, month, day).getDay();
+        // 2. 날짜별 일정 렌더링
+        for(let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${year}-${monthStr}-${day.toString().padStart(2, '0')}`;
             
+            // 현재 달력의 연/월과 일치하고, 필터에 맞는 경기만 추출
             const filtered = allMatches.filter(m => m.date === dateStr && (filterValue === '전체' || m.home.includes(filterValue) || m.away.includes(filterValue)));
             
-            let dateColor = 'text-gray-400';
-            if (dayOfWeek === 0) dateColor = 'text-red-500';
-            if (dayOfWeek === 6) dateColor = 'text-blue-500';
-
-            let dayHtml = `<div class="calendar-day"><span class="text-sm font-black ${dateColor}">${day}</span>`;
+            let dayHtml = `<div class="calendar-day"><span class="text-sm font-black ${day%7===(7-startDay)%7?'text-blue-500':(day%7===(8-startDay)%7?'text-red-500':'text-gray-400')}">${day}</span>`;
+            
             filtered.forEach(m => {
                 const score = (m.home_score !== null) 
                     ? `<span class="score-badge">${m.home_score}</span> : <span class="score-badge">${m.away_score}</span>`
@@ -111,19 +106,20 @@
         }
     }
 
-    document.getElementById('prevMonth').onclick = () => {
+    // 네비게이션 버튼 이벤트 (이전 달 / 다음 달)
+    document.getElementById('prevBtn').addEventListener('click', () => {
         currentDate.setMonth(currentDate.getMonth() - 1);
         renderCalendar();
-    };
-
-    document.getElementById('nextMonth').onclick = () => {
+    });
+    
+    document.getElementById('nextBtn').addEventListener('click', () => {
         currentDate.setMonth(currentDate.getMonth() + 1);
         renderCalendar();
-    };
+    });
 
-    document.getElementById('teamFilter').onchange = () => renderCalendar();
-
-    fetchAllData();
+    document.getElementById('teamFilter').addEventListener('change', renderCalendar);
+    
+    fetchMatches();
 </script>
 </body>
 </html>
