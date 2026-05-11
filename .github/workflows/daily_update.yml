@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python
-        uses: actions/python-setup@v4
+        uses: actions/setup-python@v4 # 👈 여기를 정확히 수정!
         with:
           python-version: '3.9'
       - name: Install dependencies
