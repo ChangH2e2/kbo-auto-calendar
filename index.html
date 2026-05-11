@@ -3,125 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⚾️ KBO 스마트 예매 캘린더 (Auto)</title>
+    <title>⚾️ KBO 2026 스마트 캘린더</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background-color: #e5e7eb; }
-        .calendar-day { min-height: 120px; background-color: white; padding: 8px; }
-        .match-card { font-size: 0.75rem; padding: 4px; border-radius: 4px; margin-top: 4px; background-color: #f3f4f6; border-left: 4px solid #3b82f6; }
-        .team-samsung { border-left-color: #074da1; background-color: #eef2ff; } /* 삼성 라이온즈 강조 */
+        .calendar-day { min-height: 160px; background-color: white; padding: 6px; }
+        .match-card { 
+            font-size: 0.72rem; padding: 6px; border-radius: 6px; margin-top: 4px; 
+            border: 1px solid #e5e7eb; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .score-badge { background-color: #1f2937; color: white; padding: 1px 4px; border-radius: 4px; font-weight: 800; }
+        .stadium-info { color: #9ca3af; font-size: 0.65rem; margin-top: 4px; display: block; border-top: 1px dashed #f3f4f6; padding-top: 4px; }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="bg-gray-50 min-h-screen p-4">
+    <div class="max-w-6xl mx-auto">
+        <header class="bg-white p-5 rounded-xl shadow-sm mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-xl font-black text-gray-800 underline decoration-blue-500 decoration-4">⚾️ KBO 2026 일정 & 결과</h1>
+                <p class="text-xs text-gray-400 mt-1">실시간 경기 결과 및 예매 정보 (Home vs Away)</p>
+            </div>
+            <select id="teamFilter" class="border-2 border-gray-100 p-2 rounded-lg text-sm font-bold outline-none focus:border-blue-500 transition-all">
+                <option value="전체">전체 구단 일정</option>
+                <option value="삼성">삼성 라이온즈</option> <option value="LG">LG 트윈스</option>
+                <option value="SSG">SSG 랜더스</option> <option value="NC">NC 다이노스</option>
+                <option value="두산">두산 베어스</option> <option value="KIA">KIA 타이거즈</option>
+                <option value="롯데">롯데 자이언츠</option> <option value="한화">한화 이글스</option>
+                <option value="키움">키움 히어로즈</option> <option value="KT">KT 위즈</option>
+            </select>
+        </header>
 
-<div class="max-w-6xl mx-auto p-4">
-    <header class="flex justify-between items-center mb-6 bg-white p-4 rounded-xl shadow-sm">
-        <h1 class="text-xl font-bold text-gray-800">🗓️ KBO 2026년 5월 경기 일정</h1>
-        <select id="teamFilter" class="border p-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="전체">전체 구단 일정 보기</option>
-            <option value="삼성">삼성 라이온즈</option>
-            <option value="LG">LG 트윈스</option>
-            <option value="SSG">SSG 랜더스</option>
-            <option value="NC">NC 다이노스</option>
-            <option value="두산">두산 베어스</option>
-            <option value="KIA">KIA 타이거즈</option>
-            <option value="롯데">롯데 자이언츠</option>
-            <option value="한화">한화 이글스</option>
-            <option value="키움">키움 히어로즈</option>
-            <option value="KT">KT 위즈</option>
-        </select>
-    </header>
-
-    <div class="grid grid-cols-7 mb-2 text-center font-bold text-sm text-gray-600">
-        <div class="text-red-500">일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div class="text-blue-500">토</div>
+        <div class="grid grid-cols-7 mb-2 text-center font-black text-gray-400 text-xs uppercase tracking-widest">
+            <div class="text-red-400">Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div class="text-blue-400">Sat</div>
+        </div>
+        <div id="calendar" class="calendar-grid rounded-xl overflow-hidden shadow-lg border border-gray-200"></div>
     </div>
 
-    <div id="calendar" class="calendar-grid border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-        </div>
-</div>
-
 <script>
-    // --- 1. Supabase 설정 (창희님의 진짜 정보!) ---
     const SUPABASE_URL = 'https://rqdwdortnbpkpipussah.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_72QYev7CliIOdaHVa9caFg_mm19QiZE';
-    
+    const SUPABASE_KEY = '여기에_창희님의_ANON_KEY_입력';
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    let allMatches = []; // 전체 경기 데이터를 담을 변수
+    async function fetchAndRender() {
+        const { data, error } = await _supabase.from('kbo_matches').select('*').order('date', {ascending: true});
+        if (error) return;
+        
+        const render = (filterValue = '전체') => {
+            const container = document.getElementById('calendar');
+            container.innerHTML = '';
+            
+            const startDay = 5; // 2026년 5월 1일 금요일
+            for(let i=0; i<startDay; i++) container.innerHTML += '<div class="calendar-day bg-gray-50/50"></div>';
 
-    // --- 2. 데이터 가져오기 ---
-    async function loadKboData() {
-        const calendarEl = document.getElementById('calendar');
-        calendarEl.innerHTML = '<div class="col-span-7 p-10 text-center text-gray-500">데이터를 불러오는 중...</div>';
+            for(let day=1; day<=31; day++) {
+                const dateStr = `2026-05-${day.toString().padStart(2, '0')}`;
+                const filtered = data.filter(m => m.date === dateStr && (filterValue === '전체' || m.home.includes(filterValue) || m.away.includes(filterValue)));
+                
+                let dayHtml = `<div class="calendar-day"><span class="text-sm font-black ${day%7===2?'text-blue-500':(day%7===3?'text-red-500':'text-gray-400')}">${day}</span>`;
+                filtered.forEach(m => {
+                    const score = (m.home_score !== null) 
+                        ? `<span class="score-badge">${m.home_score}</span> : <span class="score-badge">${m.away_score}</span>`
+                        : `<span class="text-gray-300 font-bold">vs</span>`;
+                    
+                    dayHtml += `
+                        <div class="match-card">
+                            <div class="flex justify-between items-center gap-1">
+                                <span class="font-bold text-gray-700">${m.home}</span>
+                                ${score}
+                                <span class="font-bold text-gray-700">${m.away}</span>
+                            </div>
+                            <span class="stadium-info">📍 ${m.stadium} | ${m.time}</span>
+                        </div>`;
+                });
+                dayHtml += `</div>`;
+                container.innerHTML += dayHtml;
+            }
+        };
 
-        try {
-            const { data, error } = await _supabase
-                .from('kbo_matches')
-                .select('*')
-                .order('date', { ascending: true });
-
-            if (error) throw error;
-            allMatches = data;
-            renderCalendar();
-        } catch (err) {
-            console.error('로드 에러:', err);
-            calendarEl.innerHTML = '<div class="col-span-7 p-10 text-center text-red-500">데이터 로드 실패! 콘솔을 확인하세요.</div>';
-        }
+        render();
+        document.getElementById('teamFilter').onchange = (e) => render(e.target.value);
     }
-
-    // --- 3. 달력 그리기 ---
-    function renderCalendar() {
-        const calendarEl = document.getElementById('calendar');
-        const teamFilter = document.getElementById('teamFilter').value;
-        calendarEl.innerHTML = '';
-
-        // 2026년 5월 기준 (1일이 금요일부터 시작)
-        const startDay = 5; // 금요일
-        const daysInMonth = 31;
-
-        // 공백 채우기
-        for (let i = 0; i < startDay; i++) {
-            const emptyDiv = document.createElement('div');
-            emptyDiv.className = 'calendar-day bg-gray-50';
-            calendarEl.appendChild(emptyDiv);
-        }
-
-        // 날짜 채우기
-        for (let day = 1; day <= daysInMonth; day++) {
-            const dateStr = `2026-05-${day.toString().padStart(2, '0')}`;
-            const dayDiv = document.createElement('div');
-            dayDiv.className = 'calendar-day';
-            dayDiv.innerHTML = `<span class="font-bold text-sm ${day % 7 === 2 ? 'text-blue-500' : (day % 7 === 3 ? 'text-red-500' : 'text-gray-700')}">${day}</span>`;
-
-            // 해당 날짜 경기 필터링
-            const dayMatches = allMatches.filter(m => {
-                const isDateMatch = m.date === dateStr;
-                const isTeamMatch = teamFilter === '전체' || m.home.includes(teamFilter) || m.away.includes(teamFilter);
-                return isDateMatch && isTeamMatch;
-            });
-
-            dayMatches.forEach(match => {
-                const matchEl = document.createElement('div');
-                const isSamsungMatch = match.home.includes('삼성') || match.away.includes('삼성');
-                matchEl.className = `match-card ${isSamsungMatch ? 'team-samsung' : ''}`;
-                matchEl.innerHTML = `
-                    <div class="font-bold">${match.away} vs ${match.home}</div>
-                    <div class="text-gray-500 text-[10px]">${match.stadium} | ${match.time}</div>
-                `;
-                dayDiv.appendChild(matchEl);
-            });
-
-            calendarEl.appendChild(dayDiv);
-        }
-    }
-
-    // 필터 변경 시 다시 그리기
-    document.getElementById('teamFilter').addEventListener('change', renderCalendar);
-
-    // 실행
-    loadKboData();
+    fetchAndRender();
 </script>
-
 </body>
 </html>

@@ -6,12 +6,24 @@ from supabase import create_client
 import os
 import sys
 
+# 환경 변수 설정
 URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
 KEY = os.environ.get("SUPABASE_KEY", "").strip()
 
 def get_kbo_data():
-    print("📡 KBO 서버 데이터 분석 중...")
-    # ... (생략: 기존 API 호출 및 rows 가져오는 부분) ...
+    print("📡 KBO 서버 데이터 정밀 분석 중... (2026년 5월)")
+    api_url = "https://www.koreabaseball.com/ws/Schedule.asmx/GetScheduleList"
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
+    }
+    payload = {
+        "leId": "1", "srIdList": "0,1,2,3,4,5,6,7,8,9", 
+        "seasonId": "2026", "gameMonth": "05", "teamId": ""
+    }
+    
+    response = requests.post(api_url, data=payload, headers=headers)
+    rows = response.json().get('rows', [])
     
     results = []
     curr_date = ""
@@ -19,29 +31,30 @@ def get_kbo_data():
         cells = item.get('row', [])
         if not cells: continue
         
-        # 1. 날짜 추출
+        # 날짜 추출
         day_cell = next((c for c in cells if c.get('Class') == 'day'), None)
         if day_cell:
             txt = day_cell.get('Text', '')
             match = re.search(r'(\d{2})\.(\d{2})', txt)
             if match: curr_date = f"{match.group(1)}-{match.group(2)}"
         
-        # 2. 장소(stadium) 추출 - 번호가 아니라 'stadium' 클래스를 직접 찾음
+        # 경기장(stadium) 추출 - 클래스 이름으로 검색
         stadium_cell = next((c for c in cells if c.get('Class') == 'stadium'), None)
         stadium_name = stadium_cell.get('Text', '미정') if stadium_cell else "미정"
         
-        # 3. 경기 정보 추출
+        # 시간(time) 추출
+        time_cell = next((c for c in cells if c.get('Class') == 'time'), None)
+        game_time = time_cell.get('Text', '18:30') if time_cell else "18:30"
+        
+        # 경기 내용(play) 추출
         play_cell = next((c for c in cells if c.get('Class') == 'play'), None)
         if play_cell and curr_date:
             play_text = play_cell.get('Text', '')
             soup = BeautifulSoup(play_text, 'html.parser')
             
-            # 팀명 및 점수 추출
-            teams = soup.find_all('script') # 가끔 스크립트 안에 데이터가 숨어있을 수 있음
-            # 실제 팀 이름이 적힌 span 태그 확인
             team_spans = soup.find_all('span')
             scores = soup.find_all('em')
-
+            
             if len(team_spans) >= 2:
                 away_team = team_spans[0].get_text(strip=True)
                 home_team = team_spans[-1].get_text(strip=True)
@@ -49,7 +62,7 @@ def get_kbo_data():
                 h_score = None
                 a_score = None
                 
-                # 우천 취소 여부 확인
+                # 우천취소 처리 및 점수 파싱
                 if "우천취소" in play_text:
                     stadium_name = "🚫 우천취소"
                 elif len(scores) >= 2:
@@ -58,10 +71,6 @@ def get_kbo_data():
                     if a_txt.isdigit() and h_txt.isdigit():
                         a_score = int(a_txt)
                         h_score = int(h_txt)
-
-                # 시간 정보 추출
-                time_cell = next((c for c in cells if c.get('Class') == 'time'), None)
-                game_time = time_cell.get('Text', '18:30') if time_cell else "18:30"
 
                 results.append({
                     "date": f"2026-{curr_date}",
@@ -76,18 +85,16 @@ def get_kbo_data():
 
 if __name__ == "__main__":
     if not URL or not KEY:
-        print("🚨 설정 에러")
+        print("🚨 SUPABASE 설정 에러")
         sys.exit(1)
 
     try:
         data = get_kbo_data()
         if data:
             supabase = create_client(URL, KEY)
-            # on_conflict를 사용해 날짜/홈/원정이 겹치면 업데이트하도록 설정
+            # upsert를 통해 이미 있는 데이터는 업데이트(점수 반영), 없으면 삽입
             supabase.table("kbo_matches").upsert(data, on_conflict="date,home,away").execute()
-            print(f"🎉 {len(data)}건의 데이터 업데이트 완료!")
-        else:
-            print("🚨 데이터 없음")
+            print(f"🎉 {len(data)}건의 데이터 동기화 완료!")
     except Exception as e:
-        print(f"❌ 에러: {e}")
+        print(f"❌ 에러 발생: {e}")
         sys.exit(1)
