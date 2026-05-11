@@ -9,25 +9,13 @@ import datetime
 URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
 KEY = os.environ.get("SUPABASE_KEY", "").strip()
 
-# KBO 정식 10개 구단 (여기에 포함 안 된 단어가 팀명에 있으면 무조건 버림)
+# 🛡️ 1차 방어막: KBO 10개 구단 (WBC, 평가전 완벽 차단)
 VALID_TEAMS = ['KIA', 'KT', 'LG', 'NC', 'SSG', '두산', '롯데', '삼성', '키움', '한화']
-
-def is_valid_team(team_name):
-    # 팀명에 정규 구단 이름이 포함되어 있는지 엄격하게 검사
-    for valid in VALID_TEAMS:
-        if valid in team_name:
-            return True
-    return False
 
 def get_kbo_data():
     now = datetime.datetime.now()
     current_year = str(now.year)
     target_months = [str(m).zfill(2) for m in range(3, 12)]
-    
-    # KBO API의 꼼수를 막기 위해 명확히 분리 호출
-    # "1": 정규시즌 / "4,5,7": 준플, 플옵, 한국시리즈
-    # "0"(시범경기), "3"(올스타전) 등은 아예 물어보지도 않음!
-    sr_ids_to_fetch = ["1", "4,5,7"] 
     
     all_results = []
     
@@ -39,91 +27,87 @@ def get_kbo_data():
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
         }
         
-        # 정규시즌 한번, 가을야구 한번 따로따로 요청
-        for sr_id in sr_ids_to_fetch:
-            payload = {
-                "leId": "1", 
-                "srIdList": sr_id, 
-                "seasonId": current_year,
-                "gameMonth": current_month,
-                "teamId": ""
-            }
+        # 🚨 KBO 서버 오류 방지: 가장 안정적인 "0~9 전체 호출"을 사용합니다.
+        payload = {
+            "leId": "1", 
+            "srIdList": "0,1,2,3,4,5,6,7,8,9", 
+            "seasonId": current_year,
+            "gameMonth": current_month,
+            "teamId": ""
+        }
+        
+        try:
+            response = requests.post(api_url, data=payload, headers=headers)
+            rows = response.json().get('rows', [])
             
-            try:
-                response = requests.post(api_url, data=payload, headers=headers)
-                rows = response.json().get('rows', [])
+            curr_date = ""
+            for item in rows:
+                cells = item.get('row', [])
+                if not cells: continue
                 
-                curr_date = ""
-                for item in rows:
-                    cells = item.get('row', [])
-                    if not cells: continue
+                day_cell = next((c for c in cells if c.get('Class') == 'day'), None)
+                if day_cell:
+                    txt = day_cell.get('Text', '')
+                    match = re.search(r'(\d{2})\.(\d{2})', txt)
+                    if match: curr_date = f"{match.group(1)}-{match.group(2)}"
+                
+                stadium_raw = cells[-2].get('Text', '미정') if len(cells) >= 2 else "미정"
+                stadium_name = BeautifulSoup(stadium_raw, 'html.parser').get_text(strip=True)
+                
+                time_cell = next((c for c in cells if c.get('Class') == 'time'), None)
+                time_raw = time_cell.get('Text', '18:30') if time_cell else "18:30"
+                game_time = BeautifulSoup(time_raw, 'html.parser').get_text(strip=True)
+                
+                play_cell = next((c for c in cells if c.get('Class') == 'play'), None)
+                if play_cell and curr_date:
+                    play_text = play_cell.get('Text', '')
+                    soup = BeautifulSoup(play_text, 'html.parser')
                     
-                    day_cell = next((c for c in cells if c.get('Class') == 'day'), None)
-                    if day_cell:
-                        txt = day_cell.get('Text', '')
-                        match = re.search(r'(\d{2})\.(\d{2})', txt)
-                        if match: curr_date = f"{match.group(1)}-{match.group(2)}"
-                    
-                    stadium_raw = cells[-2].get('Text', '미정') if len(cells) >= 2 else "미정"
-                    stadium_name = BeautifulSoup(stadium_raw, 'html.parser').get_text(strip=True)
-                    
-                    time_cell = next((c for c in cells if c.get('Class') == 'time'), None)
-                    time_raw = time_cell.get('Text', '18:30') if time_cell else "18:30"
-                    game_time = BeautifulSoup(time_raw, 'html.parser').get_text(strip=True)
-                    
-                    play_cell = next((c for c in cells if c.get('Class') == 'play'), None)
-                    if play_cell and curr_date:
-                        play_text = play_cell.get('Text', '')
-                        soup = BeautifulSoup(play_text, 'html.parser')
+                    spans = soup.find_all('span')
+                    if len(spans) >= 2:
+                        away_team = spans[0].get_text(strip=True)
+                        home_team = spans[-1].get_text(strip=True)
                         
-                        spans = soup.find_all('span')
-                        if len(spans) >= 2:
-                            away_team = spans[0].get_text(strip=True)
-                            home_team = spans[-1].get_text(strip=True)
+                        # 🛡️ 1차 방어 작동: 정식 구단이 아니면 무조건 버림! (WBC 제거)
+                        if away_team not in VALID_TEAMS or home_team not in VALID_TEAMS:
+                            continue
                             
-                            # 🚨 철벽 방어막: WBC, MLB 평가전, 아마추어 등 싹 다 걸러냄
-                            if not is_valid_team(away_team) or not is_valid_team(home_team):
-                                print(f"🚫 KBO 정규팀 아님 (제외됨): {away_team} vs {home_team}")
+                        # 🛡️ 2차 방어 작동: 시범경기 버림!
+                        # (KBO 정규시즌은 무조건 3월 20일 이후에 개막하므로, 3월 초중순 경기는 모두 시범경기로 간주하고 버림)
+                        if current_month == "03":
+                            day_num = int(curr_date.split('-')[1])
+                            if day_num <= 20: 
                                 continue
-                            
-                            a_score, h_score = None, None
-                            
-                            if "취소" in play_text or "우천" in play_text:
-                                stadium_name = "🚫 우천취소"
-                            else:
-                                em_tag = soup.find('em')
-                                if em_tag:
-                                    score_spans = em_tag.find_all('span')
-                                    if len(score_spans) >= 3:
-                                        a_txt = score_spans[0].get_text(strip=True)
-                                        h_txt = score_spans[-1].get_text(strip=True)
-                                        if a_txt.isdigit() and h_txt.isdigit():
-                                            a_score = int(a_txt)
-                                            h_score = int(h_txt)
+                        
+                        a_score, h_score = None, None
+                        
+                        if "취소" in play_text or "우천" in play_text:
+                            stadium_name = "🚫 우천취소"
+                        else:
+                            em_tag = soup.find('em')
+                            if em_tag:
+                                score_spans = em_tag.find_all('span')
+                                if len(score_spans) >= 3:
+                                    a_txt = score_spans[0].get_text(strip=True)
+                                    h_txt = score_spans[-1].get_text(strip=True)
+                                    if a_txt.isdigit() and h_txt.isdigit():
+                                        a_score = int(a_txt)
+                                        h_score = int(h_txt)
 
-                            all_results.append({
-                                "date": f"{current_year}-{curr_date}",
-                                "home": home_team,
-                                "away": away_team,
-                                "home_score": h_score,
-                                "away_score": a_score,
-                                "stadium": stadium_name,
-                                "time": game_time
-                            })
-            except Exception as e:
-                print(f"⚠️ 에러 발생: {e}")
-                continue
-                
-    # 🚨 중복 제거 로직 (API 두 번 호출하면서 혹시라도 겹치는 데이터가 생길까 봐 한 번 더 청소)
-    unique_results = []
-    seen = set()
-    for match in all_results:
-        identifier = f"{match['date']}_{match['home']}_{match['away']}"
-        if identifier not in seen:
-            seen.add(identifier)
-            unique_results.append(match)
-
-    return unique_results
+                        all_results.append({
+                            "date": f"{current_year}-{curr_date}",
+                            "home": home_team,
+                            "away": away_team,
+                            "home_score": h_score,
+                            "away_score": a_score,
+                            "stadium": stadium_name,
+                            "time": game_time
+                        })
+        except Exception as e:
+            print(f"⚠️ {current_month}월 처리 중 오류 발생: {e}")
+            continue
+            
+    return all_results
 
 if __name__ == "__main__":
     if not URL or not KEY:
@@ -134,7 +118,7 @@ if __name__ == "__main__":
         data = get_kbo_data()
         if data:
             supabase = create_client(URL, KEY)
-            # 수파베이스 창고를 완전히 텅텅 비운 뒤에 깨끗한 정규시즌 데이터만 넣음
+            # 기존의 잘못된 데이터(시범경기 등)를 싹 지우고 깨끗한 데이터만 붓기!
             supabase.table("kbo_matches").delete().neq("id", 0).execute()
             supabase.table("kbo_matches").insert(data).execute()
             print(f"🎉 찌꺼기 완벽 제거! 순수 KBO 데이터 총 {len(data)}건 동기화 완료!")
