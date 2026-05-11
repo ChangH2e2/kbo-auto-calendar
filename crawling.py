@@ -64,35 +64,39 @@ def get_kbo_data():
     for current_month in target_months:
         print(f"📡 {current_month}월 상세 데이터 포함 수집 중...")
         api_url = "https://www.koreabaseball.com/ws/Schedule.asmx/GetScheduleList"
-        payload = {"leId": "1", "srIdList": "0,1,2,3,4,5,6,7,8,9", "seasonId": current_year, "gameMonth": current_month, "teamId": ""}
+        # srIdList를 0으로 설정하여 정규시즌만 수집
+        payload = {"leId": "1", "srIdList": "0", "seasonId": current_year, "gameMonth": current_month, "teamId": ""}
         res = requests.post(api_url, data=payload, headers={"User-Agent": "Mozilla/5.0"})
         rows = res.json().get('rows', [])
         
-        curr_date = ""
+        curr_date_only = ""
         for item in rows:
             cells = item.get('row', [])
-            game_id = item.get('G_ID', '') # 상세 조회를 위한 ID
+            game_id = item.get('G_ID', '')
             
             day_cell = next((c for c in cells if c.get('Class') == 'day'), None)
             if day_cell:
                 txt = day_cell.get('Text', '')
                 match = re.search(r'(\d{2})\.(\d{2})', txt)
-                if match: curr_date = f"{match.group(1)}-{match.group(2)}"
+                if match: curr_date_only = f"{match.group(1)}-{match.group(2)}"
             
-            if current_month == "03" and curr_date and int(curr_date.split('-')[1]) < 28: continue
+            # 정규시즌 개막일 필터링 (2026년 기준 3월 28일)
+            if current_month == "03" and curr_date_only and int(curr_date_only.split('-')[1]) < 28: continue
+            if not curr_date_only: continue
+
+            # 전체 날짜 문자열 생성 (YYYY-MM-DD)
+            full_date = f"{current_year}-{curr_date_only}"
             
-            # 클래스명으로 정확하게 시간/장소 추출
             time_cell = next((c for c in cells if c.get('Class') == 'time'), None)
             time_text = BeautifulSoup(time_cell.get('Text', '18:30'), 'html.parser').get_text(strip=True) if time_cell else "18:30"
             
-            # 2. 장소 추출 (뒤에서 두 번째 셀 방식 적용)
             stadium_cell = next((c for c in cells if c.get('Class') == 'stadium'), None)
             stadium_name = BeautifulSoup(stadium_cell.get('Text', '미정'), 'html.parser').get_text(strip=True) if stadium_cell else BeautifulSoup(cells[-2].get('Text', '미정'), 'html.parser').get_text(strip=True)
             
             remark_text = cells[-1].get('Text', '')
-            
             play_cell = next((c for c in cells if c.get('Class') == 'play'), None)
-            if play_cell and curr_date:
+            
+            if play_cell:
                 soup = BeautifulSoup(play_cell.get('Text', ''), 'html.parser')
                 spans = soup.find_all('span')
                 if len(spans) >= 2:
@@ -101,8 +105,6 @@ def get_kbo_data():
                     
                     h_score, a_score = None, None
                     h_line, a_line, h_rheb, a_rheb = None, None, None, None
-                    
-                    # 우천취소 처리: stadium_name에서 제거하고 웹 UI에서 vs 자리에 노출되도록 필드 구성
                     is_cancel = "취소" in remark_text or "우천" in remark_text
                     
                     if not is_cancel:
@@ -115,10 +117,11 @@ def get_kbo_data():
                                 time.sleep(0.05)
 
                     all_results.append({
-                        "date": f"{current_year}-{curr_date}", "home": home_team, "away": away_team,
-                        "home_score": h_score, "away_score": a_score, "stadium": stadium_name, "time": time_text,
-                        "game_id": game_id, "home_line": h_line, "away_line": a_line, "home_rheb": h_rheb, "away_rheb": a_rheb,
-                        "holiday_name": holidays.get(curr_date_str) # 공휴일 정보 추가
+                        "date": full_date, "home": home_team, "away": away_team,
+                        "home_score": h_score, "away_score": a_score, "stadium": stadium_name.replace("(우천취소)", ""), 
+                        "time": time_text, "game_id": game_id, "home_line": h_line, "away_line": a_line, 
+                        "home_rheb": h_rheb, "away_rheb": a_rheb, "is_cancel": is_cancel,
+                        "holiday_name": holidays.get(full_date) # 정의된 full_date 사용
                     })
     return all_results
 
@@ -128,4 +131,4 @@ if __name__ == "__main__":
         supabase = create_client(URL, KEY)
         supabase.table("kbo_matches").delete().gte("date", "2000-01-01").execute()
         supabase.table("kbo_matches").insert(data).execute()
-        print(f"🎉 정규시즌 및 공휴일 정보 업데이트 완료! (총 {len(data)}건)")
+        print(f"🎉 데이터 업데이트 완료! (총 {len(data)}건)")
