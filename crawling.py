@@ -9,7 +9,7 @@ import datetime
 URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
 KEY = os.environ.get("SUPABASE_KEY", "").strip()
 
-# 🛡️ 1차 방어막: KBO 10개 구단 (WBC, 평가전 완벽 차단)
+# KBO 정규 10개 팀
 VALID_TEAMS = ['KIA', 'KT', 'LG', 'NC', 'SSG', '두산', '롯데', '삼성', '키움', '한화']
 
 def get_kbo_data():
@@ -27,7 +27,6 @@ def get_kbo_data():
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
         }
         
-        # 🚨 KBO 서버 오류 방지: 가장 안정적인 "0~9 전체 호출"을 사용합니다.
         payload = {
             "leId": "1", 
             "srIdList": "0,1,2,3,4,5,6,7,8,9", 
@@ -51,6 +50,12 @@ def get_kbo_data():
                     match = re.search(r'(\d{2})\.(\d{2})', txt)
                     if match: curr_date = f"{match.group(1)}-{match.group(2)}"
                 
+                # 🚨 1차 필터: 3월 28일 이전 경기는 파싱도 안 하고 여기서 즉시 폐기!
+                if current_month == "03" and curr_date:
+                    day_num = int(curr_date.split('-')[1])
+                    if day_num < 28:
+                        continue
+                
                 stadium_raw = cells[-2].get('Text', '미정') if len(cells) >= 2 else "미정"
                 stadium_name = BeautifulSoup(stadium_raw, 'html.parser').get_text(strip=True)
                 
@@ -68,21 +73,16 @@ def get_kbo_data():
                         away_team = spans[0].get_text(strip=True)
                         home_team = spans[-1].get_text(strip=True)
                         
-                        # 🛡️ 1차 방어 작동: 정식 구단이 아니면 무조건 버림! (WBC 제거)
+                        # 🚨 2차 필터: WBC/아마추어 등 KBO팀 아니면 폐기!
                         if away_team not in VALID_TEAMS or home_team not in VALID_TEAMS:
                             continue
-                            
-                        # 🛡️ 2차 방어 작동: 시범경기 버림!
-                        # (KBO 정규시즌은 무조건 3월 20일 이후에 개막하므로, 3월 초중순 경기는 모두 시범경기로 간주하고 버림)
-                        if current_month == "03":
-                            day_num = int(curr_date.split('-')[1])
-                            if day_num <= 20: 
-                                continue
                         
                         a_score, h_score = None, None
                         
-                        if "취소" in play_text or "우천" in play_text:
-                            stadium_name = "🚫 우천취소"
+                        # 🚨 우취 감지: 셀 전체 텍스트를 뒤져서 '취소'나 '우천'이 있으면 마킹
+                        row_text = play_text + stadium_raw
+                        if "취소" in row_text or "우천" in row_text:
+                            stadium_name = f"{stadium_name}(우취)" # 나중에 JS에서 찾기 쉽게 꼬리표 달기
                         else:
                             em_tag = soup.find('em')
                             if em_tag:
@@ -104,24 +104,21 @@ def get_kbo_data():
                             "time": game_time
                         })
         except Exception as e:
-            print(f"⚠️ {current_month}월 처리 중 오류 발생: {e}")
             continue
             
     return all_results
 
 if __name__ == "__main__":
     if not URL or not KEY:
-        print("🚨 SUPABASE 설정 에러")
         sys.exit(1)
 
     try:
         data = get_kbo_data()
         if data:
             supabase = create_client(URL, KEY)
-            # 기존의 잘못된 데이터(시범경기 등)를 싹 지우고 깨끗한 데이터만 붓기!
+            # DB 싹 비우고 깨끗한 정규시즌 데이터만 삽입
             supabase.table("kbo_matches").delete().neq("id", 0).execute()
             supabase.table("kbo_matches").insert(data).execute()
-            print(f"🎉 찌꺼기 완벽 제거! 순수 KBO 데이터 총 {len(data)}건 동기화 완료!")
+            print(f"🎉 정규시즌 KBO 데이터 총 {len(data)}건 동기화 완료!")
     except Exception as e:
-        print(f"❌ 에러 발생: {e}")
         sys.exit(1)
