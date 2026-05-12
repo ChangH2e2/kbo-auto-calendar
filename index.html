@@ -9,7 +9,7 @@
     <style>
         .inning-cell { width: 22px; text-align: center; font-size: 0.65rem; border-right: 1px solid #f3f4f6; padding: 4px 0; }
         .rheb-cell { width: 26px; text-align: center; font-weight: bold; background-color: #f9fafb; font-size: 0.7rem; }
-        .today-highlight { background-color: #eff6ff !important; border: 2px solid #3b82f6 !important; position: relative; }
+        .today-highlight { border: 3px solid #3b82f6 !important; position: relative; }
         .today-highlight::after { content: '오늘'; position: absolute; top: 2px; right: 4px; font-size: 0.55rem; color: #3b82f6; font-weight: 900; }
         .btn-active { background-color: white !important; color: #2563eb !important; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .btn-inactive { color: #6b7280 !important; background-color: transparent !important; }
@@ -84,10 +84,11 @@
         if(!m) return;
         
         const modalBody = document.getElementById('modalBody');
-        const isFinished = m.home_score !== null;
+        // scores are null or 0 might be tricky, but usually crawling.py sets them to null if not finished
+        const isFinished = m.home_score !== null && m.home_score !== undefined;
         const isCancel = m.is_cancel === true;
-        const awayWin = m.home_score !== null && m.away_score > m.home_score;
-        const homeWin = m.home_score !== null && m.home_score > m.away_score;
+        const awayWin = isFinished && m.away_score > m.home_score;
+        const homeWin = isFinished && m.home_score > m.away_score;
 
         if (isCancel) {
             modalBody.innerHTML = `<div class="text-center py-10"><div class="text-red-500 font-black text-lg mb-2">우천취소</div><div class="text-2xl font-black mb-4">${m.home} VS ${m.away}</div><p class="text-gray-500 text-sm">해당 경기는 기상 상황으로 인해 취소되었습니다.</p></div>`;
@@ -146,7 +147,7 @@
         let centerDisplay = `<span class="text-gray-300 font-normal mx-1">vs</span>`;
         if (isUchwi) {
             centerDisplay = `<span class="bg-red-50 text-red-600 px-1.5 rounded-md font-black text-[0.6rem] border border-red-200 mx-1">우천취소</span>`;
-        } else if (m.home_score !== null) {
+        } else if (m.home_score !== null && m.home_score !== undefined) {
             // [수정] 이긴 쪽 점수 파란색 강조
             centerDisplay = `<span class="font-black mx-1.5 text-gray-700">
                 <span class="${homeWin ? 'text-blue-600' : ''}">${m.home_score}</span>:<span class="${awayWin ? 'text-blue-600' : ''}">${m.away_score}</span>
@@ -156,7 +157,7 @@
         const teamStyle = (isWin) => isWin ? "font-black text-blue-600 scale-105" : "font-medium text-gray-500";
 
         return `
-        <div onclick="openDetail('${m.game_id}')" class="cursor-pointer bg-white border border-gray-100 rounded-lg p-2 mb-1.5 shadow-sm hover:border-blue-400 transition-all ${isToday ? 'today-highlight' : ''}">
+        <div onclick="openDetail('${m.game_id}')" class="cursor-pointer bg-white border border-gray-100 rounded-lg p-2 mb-1.5 shadow-sm hover:border-blue-400 transition-all">
             <div class="flex justify-between items-center w-full text-[0.65rem] md:text-xs">
                 <div class="flex-1 text-right ${teamStyle(homeWin)} truncate">
                     <span class="text-[0.55rem] text-gray-300 mr-0.5 font-normal">(홈)</span>${m.home}
