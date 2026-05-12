@@ -15,7 +15,7 @@
         .btn-inactive { color: #6b7280 !important; background-color: transparent !important; }
         ::-webkit-scrollbar { display: none; }
         /* [추가] 승리팀 강조 스타일 */
-        .win-highlight { color: #ef4444 !important; font-weight: 900 !important; }
+        .win-highlight { color: #2563eb !important; font-weight: 900 !important; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen p-2 md:p-4 text-gray-800">
@@ -86,9 +86,11 @@
         const modalBody = document.getElementById('modalBody');
         const isFinished = m.home_score !== null;
         const isCancel = m.is_cancel === true;
+        const awayWin = m.home_score !== null && m.away_score > m.home_score;
+        const homeWin = m.home_score !== null && m.home_score > m.away_score;
 
         if (isCancel) {
-            modalBody.innerHTML = `<div class="text-center py-10"><div class="text-red-500 font-black text-lg mb-2">우천취소</div><div class="text-2xl font-black mb-4">${m.away} VS ${m.home}</div><p class="text-gray-500 text-sm">해당 경기는 기상 상황으로 인해 취소되었습니다.</p></div>`;
+            modalBody.innerHTML = `<div class="text-center py-10"><div class="text-red-500 font-black text-lg mb-2">우천취소</div><div class="text-2xl font-black mb-4">${m.home} VS ${m.away}</div><p class="text-gray-500 text-sm">해당 경기는 기상 상황으로 인해 취소되었습니다.</p></div>`;
         } else if (isFinished) {
             const hL = m.home_line ? m.home_line.split('|') : [];
             const aL = m.away_line ? m.away_line.split('|') : [];
@@ -106,16 +108,16 @@
 
             modalBody.innerHTML = `
                 <div class="flex justify-between items-center mb-8 px-2">
-                    <div class="text-center"><div class="text-xl font-black ${m.away_score > m.home_score ? 'text-red-600' : ''}">${m.away}</div><div class="text-[0.6rem] text-gray-400">AWAY</div></div>
-                    <div class="text-3xl font-black text-blue-600">${m.away_score} : ${m.home_score}</div>
-                    <div class="text-center"><div class="text-xl font-black ${m.home_score > m.away_score ? 'text-red-600' : ''}">${m.home}</div><div class="text-[0.6rem] text-gray-400">HOME</div></div>
+                    <div class="text-center"><div class="text-xl font-black ${homeWin ? 'text-blue-600' : ''}">${m.home}</div><div class="text-[0.6rem] text-gray-400">HOME</div></div>
+                    <div class="text-3xl font-black text-blue-600">${m.home_score} : ${m.away_score}</div>
+                    <div class="text-center"><div class="text-xl font-black ${awayWin ? 'text-blue-600' : ''}">${m.away}</div><div class="text-[0.6rem] text-gray-400">AWAY</div></div>
                 </div>
                 <div class="overflow-x-auto border rounded-xl shadow-sm">
                     <table class="w-full text-center">
                         <thead class="bg-gray-50 border-b"><tr><th class="p-2 text-[0.6rem] text-left">팀</th>${innings}<th class="rheb-cell">R</th><th class="rheb-cell">H</th><th class="rheb-cell">E</th><th class="rheb-cell">B</th></tr></thead>
                         <tbody>
-                            <tr class="border-b"><td class="p-2 text-[0.65rem] font-bold">${m.away}</td>${getRow(aL)}<td class="rheb-cell text-red-500">${aR[0]}</td><td class="rheb-cell">${aR[1]}</td><td class="rheb-cell">${aR[2]}</td><td class="rheb-cell">${aR[3]}</td></tr>
-                            <tr><td class="p-2 text-[0.65rem] font-bold">${m.home}</td>${getRow(hL)}<td class="rheb-cell text-red-500">${hR[0]}</td><td class="rheb-cell">${hR[1]}</td><td class="rheb-cell">${hR[2]}</td><td class="rheb-cell">${hR[3]}</td></tr>
+                            <tr class="border-b"><td class="p-2 text-[0.65rem] font-bold">${m.home}</td>${getRow(hL)}<td class="rheb-cell text-red-500">${hR[0]}</td><td class="rheb-cell">${hR[1]}</td><td class="rheb-cell">${hR[2]}</td><td class="rheb-cell">${hR[3]}</td></tr>
+                            <tr><td class="p-2 text-[0.65rem] font-bold">${m.away}</td>${getRow(aL)}<td class="rheb-cell text-red-500">${aR[0]}</td><td class="rheb-cell">${aR[1]}</td><td class="rheb-cell">${aR[2]}</td><td class="rheb-cell">${aR[3]}</td></tr>
                         </tbody>
                     </table>
                 </div>`;
@@ -124,7 +126,7 @@
             modalBody.innerHTML = `
                 <div class="text-center py-6">
                     <div class="text-sm font-bold text-blue-500 mb-2">${m.date} ${m.time} 예정</div>
-                    <div class="text-2xl font-black mb-8">${m.away} VS ${m.home}</div>
+                    <div class="text-2xl font-black mb-8">${m.home} VS ${m.away}</div>
                     <div class="space-y-3">
                         <p class="text-gray-500 text-sm mb-4 font-medium italic">📍 ${m.stadium}</p>
                         <a href="https://www.ticketlink.co.kr/sports/baseball" target="_blank" class="block w-full py-3 rounded-xl font-black text-white bg-red-500 hover:bg-red-600 transition-colors">티켓링크에서 예매하기</a>
@@ -145,23 +147,23 @@
         if (isUchwi) {
             centerDisplay = `<span class="bg-red-50 text-red-600 px-1.5 rounded-md font-black text-[0.6rem] border border-red-200 mx-1">우천취소</span>`;
         } else if (m.home_score !== null) {
-            // [수정] 이긴 쪽 점수 빨간색 강조
-            centerDisplay = `<span class="font-black mx-1.5 text-blue-700">
-                <span class="${awayWin ? 'text-red-600' : ''}">${m.away_score}</span>:<span class="${homeWin ? 'text-red-600' : ''}">${m.home_score}</span>
+            // [수정] 이긴 쪽 점수 파란색 강조
+            centerDisplay = `<span class="font-black mx-1.5 text-gray-700">
+                <span class="${homeWin ? 'text-blue-600' : ''}">${m.home_score}</span>:<span class="${awayWin ? 'text-blue-600' : ''}">${m.away_score}</span>
             </span>`;
         }
 
-        const teamStyle = (isWin) => isWin ? "font-black text-red-600 scale-105" : "font-medium text-gray-500";
+        const teamStyle = (isWin) => isWin ? "font-black text-blue-600 scale-105" : "font-medium text-gray-500";
 
         return `
         <div onclick="openDetail('${m.game_id}')" class="cursor-pointer bg-white border border-gray-100 rounded-lg p-2 mb-1.5 shadow-sm hover:border-blue-400 transition-all ${isToday ? 'today-highlight' : ''}">
             <div class="flex justify-between items-center w-full text-[0.65rem] md:text-xs">
-                <div class="flex-1 text-right ${teamStyle(awayWin)} truncate">
-                    <span class="text-[0.55rem] text-gray-300 mr-0.5 font-normal">(원)</span>${m.away}
+                <div class="flex-1 text-right ${teamStyle(homeWin)} truncate">
+                    <span class="text-[0.55rem] text-gray-300 mr-0.5 font-normal">(홈)</span>${m.home}
                 </div>
                 ${centerDisplay}
-                <div class="flex-1 text-left ${teamStyle(homeWin)} truncate">
-                    ${m.home}<span class="text-[0.55rem] text-gray-300 ml-0.5 font-normal">(홈)</span>
+                <div class="flex-1 text-left ${teamStyle(awayWin)} truncate">
+                    ${m.away}<span class="text-[0.55rem] text-gray-300 ml-0.5 font-normal">(원)</span>
                 </div>
             </div>
             <div class="text-[0.45rem] md:text-[0.5rem] text-gray-400 mt-1.5 text-center font-medium">📍 ${m.stadium} | ${m.time}</div>
