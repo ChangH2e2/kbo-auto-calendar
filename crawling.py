@@ -19,7 +19,7 @@ def get_holidays(year):
         for month in range(3, 12):
             url = "http://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo"
             params = {'solYear': year, 'solMonth': str(month).zfill(2), 'ServiceKey': HOLIDAY_API_KEY, '_type': 'json'}
-            res = requests.get(url, params=params)
+            res = requests.get(url, params=params, timeout=5)
             data = res.json()
             
             body = data.get('response', {}).get('body', {})
@@ -41,14 +41,15 @@ def get_line_score(game_id):
         url = "https://www.koreabaseball.com/ws/Schedule.asmx/GetScheduleLineScore"
         payload = {"gameId": game_id}
         headers = {"Content-Type": "application/x-www-form-urlencoded; charset=UTF-8", "User-Agent": "Mozilla/5.0"}
-        res = requests.post(url, data=payload, headers=headers)
+        res = requests.post(url, data=payload, headers=headers, timeout=5)
         data = res.json()
         h_line = "|".join([str(data.get(f'h{i}', '-')) for i in range(1, 13) if data.get(f'h{i}') is not None])
         a_line = "|".join([str(data.get(f'a{i}', '-')) for i in range(1, 13) if data.get(f'a{i}') is not None])
         h_rheb = f"{data.get('hR',0)}|{data.get('hH',0)}|{data.get('hE',0)}|{data.get('hB',0)}"
         a_rheb = f"{data.get('aR',0)}|{data.get('aH',0)}|{data.get('aE',0)}|{data.get('aB',0)}"
         return h_line, a_line, h_rheb, a_rheb
-    except:
+    except Exception as e:
+        print(f"상세 이닝 정보 수집 실패 ({game_id}: {e})")
         return None, None, None, None
 
 def get_kbo_data():
@@ -60,9 +61,14 @@ def get_kbo_data():
     for current_month in [str(m).zfill(2) for m in range(3, 12)]:
         api_url = "https://www.koreabaseball.com/ws/Schedule.asmx/GetScheduleList"
         payload = {"leId": "1", "srIdList": "0", "seasonId": current_year, "gameMonth": current_month, "teamId": ""}
-        res = requests.post(api_url, data=payload, headers={"User-Agent": "Mozilla/5.0"})
-        rows = res.json().get('rows', [])
         
+        try:
+            res = requests.post(api_url, data=payload, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+            rows = res.json().get('rows', [])
+        except Exception as e:
+            print(f"{current_month}월 데이터 호출 실패: {e}")
+            continue # 실패하면 다음 달로 넘어감
+
         curr_date_only = ""
         for item in rows:
             cells = item.get('row', [])
@@ -119,7 +125,7 @@ def get_kbo_data():
                                     a_score = int(a_score_val)
                                     h_score = int(h_score_val)
                                     h_line, a_line, h_rheb, a_rheb = get_line_score(game_id)
-                                    time.sleep(0.05)
+                                    time.sleep(0.2)
                             except ValueError:
                                 pass # 숫자가 아니면 None 유지
 
