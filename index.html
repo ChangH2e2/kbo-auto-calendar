@@ -167,8 +167,6 @@
                     </div>
                 </div>`;
                 
-            document.getElementById('detailModal').classList.remove('hidden');
-
             // [핵심!] 1초마다 실행되는 실시간 타이머 로직
             if (countdownInterval) clearInterval(countdownInterval); // 혹시 돌고 있는 타이머 리셋
             
@@ -219,6 +217,9 @@
             updateTimer(); // 모달 켜지자마자 즉시 1번 실행
             countdownInterval = setInterval(updateTimer, 1000); // 이후 1초마다 업데이트
         }
+
+        document.getElementById('detailModal').classList.remove('hidden');
+
     }
 
     // 👇 기존 getTicketStatus 함수를 지우고 아래 코드로 교체하세요!
