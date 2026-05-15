@@ -82,6 +82,43 @@ def get_line_score(game_id):
         print(f"상세 이닝 수집 에러 ({game_id}): {e}")
         return None, None, None, None
     
+def get_pitcher_info(game_id):
+    """박스스코어 API에서 투수진 정보 추출 (이중 JSON 껍질 제거)"""
+    try:
+        url = "https://www.koreabaseball.com/ws/Schedule.asmx/GetBoxScoreScroll"
+        payload = {"leId": "1", "srId": "0", "seasonId": game_id[:4], "gameId": game_id}
+        res = requests.post(url, data=payload, headers={"User-Agent": "Mozilla/5.0"}, timeout=5)
+        
+        if res.status_code != 200: return None, None
+        
+        data = res.json()
+        pitcher_list = data.get('arrPitcher', [])
+        final_pitchers = []
+
+        for p_data in pitcher_list[:2]: # 0: 원정, 1: 홈
+            p_dict = json.loads(p_data) if isinstance(p_data, str) else p_data
+            table_str = p_dict.get('table', '{}')
+            table_data = json.loads(table_str) if isinstance(table_str, str) else table_str
+            
+            rows = table_data.get('rows', [])
+            team_pitchers = []
+            for row in rows:
+                cells = row.get('row', [])
+                if not cells: continue
+                name = BeautifulSoup(str(cells[0].get('Text', '')), 'html.parser').get_text(strip=True)
+                result = BeautifulSoup(str(cells[2].get('Text', '')), 'html.parser').get_text(strip=True).replace('&nbsp;', '')
+                if name and name != "선수명":
+                    team_pitchers.append(f"{name}({result})" if result else name)
+            final_pitchers.append("|".join(team_pitchers))
+            
+        # 원정팀 투수진(index 0), 홈팀 투수진(index 1) 반환
+        return final_pitchers[0] if len(final_pitchers) > 0 else None, \
+               final_pitchers[1] if len(final_pitchers) > 1 else None
+    except Exception as e:
+        print(f"투수 정보 수집 에러 ({game_id}): {e}")
+        return None, None
+
+
 def get_kbo_data():
     now = datetime.datetime.now()
     current_year = str(now.year)
@@ -153,16 +190,30 @@ def get_kbo_data():
                                     
                                     # 💡 game_id를 성공적으로 찾았을 때만 상세 점수를 요청!
                                     if game_id:
+                                        # 1. 이닝 점수 & RHEB 가져오기
                                         h_line, a_line, h_rheb, a_rheb = get_line_score(game_id)
+                                        
+                                        # 2. [추가] 투수 정보 가져오기
+                                        a_pitchers, h_pitchers = get_pitcher_info(game_id)
+                                        
                                         time.sleep(0.2)
                             except ValueError:
                                 pass
 
                     all_results.append({
-                        "date": full_date, "home": home_team, "away": away_team,
-                        "home_score": h_score, "away_score": a_score, "stadium": stadium_name.replace("(우천취소)", ""), 
-                        "time": game_time, "game_id": game_id, "home_line": h_line, "away_line": a_line, 
-                        "home_rheb": h_rheb, "away_rheb": a_rheb, "is_cancel": is_cancel,
+                        "date": full_date, 
+                        "home": home_team, 
+                        "away": away_team,
+                        "home_score": h_score, 
+                        "away_score": a_score, 
+                        "game_id": game_id,
+                        "home_line": h_line, 
+                        "away_line": a_line, 
+                        "home_rheb": h_rheb, 
+                        "away_rheb": a_rheb,
+                        "away_pitchers": a_pitchers, # 🌟 추가
+                        "home_pitchers": h_pitchers, # 🌟 추가
+                        "is_cancel": is_cancel,
                         "holiday_name": holidays.get(full_date)
                     })
     return all_results
