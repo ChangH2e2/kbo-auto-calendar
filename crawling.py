@@ -96,18 +96,25 @@ def get_kbo_data():
                     away_team, home_team = spans[0].get_text(strip=True), spans[-1].get_text(strip=True)
                     if away_team not in VALID_TEAMS or home_team not in VALID_TEAMS: continue
                     
-                    h_score, a_score = None, None
+                    h_score, a_score = None, None # 초기값을 None으로 유지
                     h_line, a_line, h_rheb, a_rheb = None, None, None, None
                     is_cancel = "취소" in remark_text or "우천" in remark_text
                     
                     if not is_cancel:
                         em = soup.find('em')
-                        if em:
-                            s = em.find_all('span')
-                            if len(s) >= 3:
-                                a_score, h_score = int(s[0].text), int(s[-1].text)
-                                h_line, a_line, h_rheb, a_rheb = get_line_score(game_id)
-                                time.sleep(0.05)
+                        # em 태그가 있고 그 안에 숫자가 명확히 있을 때만 점수 기록
+                        if em and len(em.find_all('span')) >= 3:
+                            try:
+                                a_score_val = em.find_all('span')[0].text.strip()
+                                h_score_val = em.find_all('span')[-1].text.strip()
+                                
+                                if a_score_val.isdigit() and h_score_val.isdigit():
+                                    a_score = int(a_score_val)
+                                    h_score = int(h_score_val)
+                                    h_line, a_line, h_rheb, a_rheb = get_line_score(game_id)
+                                    time.sleep(0.05)
+                            except ValueError:
+                                pass # 숫자가 아니면 None 유지
 
                     all_results.append({
                         "date": full_date, "home": home_team, "away": away_team,

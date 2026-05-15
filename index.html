@@ -84,11 +84,11 @@
         if(!m) return;
         
         const modalBody = document.getElementById('modalBody');
-        // scores are null or 0 might be tricky, but usually crawling.py sets them to null if not finished
-        const isFinished = m.home_score !== null && m.home_score !== undefined;
+        // 경기 전에는 home_score가 null이어야 합니다. null이거나 undefined면 예매 창을 띄웁니다.
+        const isFinished = m.home_score !== null && m.home_score !== undefined && m.home_score !== '';
         const isCancel = m.is_cancel === true;
-        const awayWin = isFinished && m.away_score > m.home_score;
-        const homeWin = isFinished && m.home_score > m.away_score;
+        const awayWin = isFinished && Number(m.away_score) > Number(m.home_score);
+        const homeWin = isFinished && Number(m.home_score) > Number(m.away_score);
 
         if (isCancel) {
             modalBody.innerHTML = `<div class="text-center py-10"><div class="text-red-500 font-black text-lg mb-2">우천취소</div><div class="text-2xl font-black mb-4">${m.home} VS ${m.away}</div><p class="text-gray-500 text-sm">해당 경기는 기상 상황으로 인해 취소되었습니다.</p></div>`;
