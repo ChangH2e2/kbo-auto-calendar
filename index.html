@@ -55,6 +55,20 @@
     const SUPABASE_KEY = 'sb_publishable_72QYev7CliIOdaHVa9caFg_mm19QiZE';
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
+    // 👇 여기부터 추가! [구단별 예매 정책 데이터]
+    const TEAM_RULES = {
+        "두산": { vendor: "인터파크", url: "https://mobileticket.interpark.com/sports/goods/G0000063", daysBefore: 7, openTime: 11 },
+        "LG": { vendor: "티켓링크", url: "https://m.ticketlink.co.kr/sports/baseball/64", daysBefore: 7, openTime: 11 },
+        "키움": { vendor: "인터파크", url: "https://mobileticket.interpark.com/sports/goods/G0000065", daysBefore: 7, openTime: 11 },
+        "SSG": { vendor: "티켓링크", url: "https://m.ticketlink.co.kr/sports/baseball/466", daysBefore: 7, openTime: 11 },
+        "NC": { vendor: "NC/티켓링크", url: "https://m.ticketlink.co.kr/sports/baseball/52", daysBefore: 7, openTime: 11 },
+        "삼성": { vendor: "삼성/티켓링크", url: "https://m.ticketlink.co.kr/sports/baseball/57", daysBefore: 7, openTime: 11 },
+        "롯데": { vendor: "롯데 앱/웹", url: "https://www.giantsclub.com/html/?pcode=297", daysBefore: 7, openTime: 10 },
+        "KIA": { vendor: "티켓링크", url: "https://m.ticketlink.co.kr/sports/baseball/58", daysBefore: 7, openTime: 11 },
+        "KT": { vendor: "kt/티켓링크", url: "https://m.ticketlink.co.kr/sports/baseball/62", daysBefore: 7, openTime: 11 },
+        "한화": { vendor: "이글콕/티켓링크", url: "https://m.ticketlink.co.kr/sports/baseball/60", daysBefore: 7, openTime: 11 }
+    };
+
     let allMatches = [], currentDate = new Date(), viewMode = 'month';
     const now = new Date();
     const TODAY_STR = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
@@ -84,15 +98,21 @@
         if(!m) return;
         
         const modalBody = document.getElementById('modalBody');
-        const isFinished = m.home_score !== null && m.home_score !== undefined && m.home_score !== '';
         const isCancel = m.is_cancel === true;
+        
+        // [핵심 로직] 현재 시간과 경기 시작 시간 비교
+        const now = new Date();
+        const gameDateTime = new Date(`${m.date}T${m.time}:00`);
+        const hasStarted = now >= gameDateTime; // 시간이 지났으면 시작한 것으로 간주
+        
+        const isFinished = hasStarted && m.home_score !== null && m.home_score !== undefined && m.home_score !== '';
         const awayWin = isFinished && Number(m.away_score) > Number(m.home_score);
         const homeWin = isFinished && Number(m.home_score) > Number(m.away_score);
 
         if (isCancel) {
             modalBody.innerHTML = `<div class="text-center py-10"><div class="text-red-500 font-black text-lg mb-2">우천취소</div><div class="text-2xl font-black mb-4">${m.home} VS ${m.away}</div><p class="text-gray-500 text-sm">해당 경기는 기상 상황으로 인해 취소되었습니다.</p></div>`;
         } else if (isFinished) {
-            // 이닝 정보가 없으면 빈 배열로 처리하여 화면이 깨지지 않게 방어
+            // 이닝 점수 정보 (경기 진행 중 또는 종료)
             const hL = m.home_line ? m.home_line.split('|') : [];
             const aL = m.away_line ? m.away_line.split('|') : [];
             const hR = m.home_rheb ? m.home_rheb.split('|') : ['0','0','0','0'];
@@ -123,19 +143,55 @@
                     </table>
                 </div>`;
         } else {
-            // 예정된 경기: 예매 버튼 노출
+            // [업그레이드!] 홈팀 정보를 넘겨서 구단별 맞춤 티켓 정보를 받아옴
+            const ticket = getTicketStatus(m.home, m.date); 
+            const statusBg = ticket.isOpen ? 'bg-green-50 border-green-200 text-green-700' : 'bg-orange-50 border-orange-200 text-orange-700';
+
             modalBody.innerHTML = `
-                <div class="text-center py-6">
+                <div class="text-center py-4">
                     <div class="inline-block bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-[0.7rem] font-black tracking-wider mb-4 border border-blue-100">${m.date} ${m.time} 예정</div>
                     <div class="text-3xl font-black mb-2">${m.home} <span class="text-gray-300 text-xl mx-2">VS</span> ${m.away}</div>
-                    <p class="text-gray-500 text-sm mb-8 font-medium">📍 ${m.stadium}</p>
+                    <p class="text-gray-500 text-sm mb-6 font-medium">📍 ${m.stadium}</p>
+
+                    <div class="mb-6 p-3 ${statusBg} border rounded-xl shadow-sm font-black text-sm transition-all">
+                        ${ticket.text}
+                    </div>
+
                     <div class="space-y-3 flex flex-col px-4">
-                        <a href="https://www.ticketlink.co.kr/sports/baseball" target="_blank" class="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-black text-white bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 shadow-md">🎟️ 티켓링크 예매하기</a>
-                        <a href="https://ticket.interpark.com/Contents/Sports/GoodsInfo?SportsCode=07001" target="_blank" class="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-black text-white bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-900 shadow-md">🎫 인터파크 예매하기</a>
+                        <a href="${ticket.url}" target="_blank" class="block w-full py-4 rounded-xl font-black text-white bg-blue-600 hover:bg-blue-700 shadow-lg transition-transform active:scale-95">
+                            🎫 ${m.home} 예매처 (${ticket.vendor}) 이동하기
+                        </a>
                     </div>
                 </div>`;
         }
         document.getElementById('detailModal').classList.remove('hidden');
+    }
+
+    // 👇 기존 getTicketStatus 함수를 지우고 아래 코드로 교체하세요!
+    function getTicketStatus(homeTeam, gameDateStr) {
+        // 홈팀의 정책을 가져오고, 만약 데이터가 없으면 기본값(티켓링크, 7일전 11시) 적용
+        const rule = TEAM_RULES[homeTeam] || { daysBefore: 7, openTime: 11, vendor: "티켓링크", url: "https://m.ticketlink.co.kr" };
+        
+        const now = new Date();
+        const gameDate = new Date(gameDateStr);
+        
+        // 경기일 기준 며칠 전, 몇 시인지 계산
+        const openDate = new Date(gameDate.getTime() - (rule.daysBefore * 24 * 60 * 60 * 1000));
+        openDate.setHours(rule.openTime, 0, 0, 0);
+
+        const diffMs = openDate.getTime() - now.getTime();
+        
+        // 이미 예매가 시작된 경우
+        if (diffMs <= 0) return { isOpen: true, text: `🟢 ${rule.vendor} 예매 진행 중`, url: rule.url, vendor: rule.vendor };
+        
+        const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        
+        // 예매 시작 전인 경우 (D-day 및 오픈 시간 명시)
+        if (days > 0) return { isOpen: false, text: `⏳ 예매 오픈까지 D-${days} (${hours}시간 남음)`, url: rule.url, vendor: rule.vendor };
+        if (hours > 0) return { isOpen: false, text: `🔥 오늘 ${rule.openTime}시 오픈! (${hours}시간 남음)`, url: rule.url, vendor: rule.vendor };
+        
+        return { isOpen: false, text: `🚨 곧 예매가 시작됩니다!`, url: rule.url, vendor: rule.vendor };
     }
 
     function getMatchHTML(m, mode) {
@@ -144,11 +200,14 @@
         const awayWin = m.home_score !== null && m.away_score > m.home_score;
         const homeWin = m.home_score !== null && m.home_score > m.away_score;
         
+        const gameDateTime = new Date(`${m.date}T${m.time}:00`);
+        const hasStarted = new Date() >= gameDateTime;
+
         let centerDisplay = `<span class="text-gray-300 font-normal mx-1">vs</span>`;
         if (isUchwi) {
             centerDisplay = `<span class="bg-red-50 text-red-600 px-1.5 rounded-md font-black text-[0.6rem] border border-red-200 mx-1">우천취소</span>`;
-        } else if (m.home_score !== null && m.home_score !== undefined) {
-            // [수정] 이긴 쪽 점수 파란색 강조
+        } else if (hasStarted && m.home_score !== null && m.home_score !== undefined) {
+            // 시간이 지난 경기만 진짜 점수 노출
             centerDisplay = `<span class="font-black mx-1.5 text-gray-700">
                 <span class="${homeWin ? 'text-blue-600' : ''}">${m.home_score}</span>:<span class="${awayWin ? 'text-blue-600' : ''}">${m.away_score}</span>
             </span>`;
@@ -232,6 +291,7 @@
     };
     document.getElementById('teamFilter').onchange = renderView;
     fetchMatches();
+    
 </script>
 </body>
 </html>

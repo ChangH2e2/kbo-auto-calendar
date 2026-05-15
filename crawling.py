@@ -37,7 +37,7 @@ def get_holidays(year):
 
 def get_line_score(game_id):
     """경기 상세 이닝 점수 수집"""
-    try:
+    try:₩
         url = "https://www.koreabaseball.com/ws/Schedule.asmx/GetScheduleLineScore"
         payload = {"gameId": game_id}
         headers = {"Content-Type": "application/x-www-form-urlencoded; charset=UTF-8", "User-Agent": "Mozilla/5.0"}
