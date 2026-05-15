@@ -97,12 +97,15 @@ def get_kbo_data():
             rows = res.json().get('rows', [])
         except Exception as e:
             print(f"{current_month}월 데이터 호출 실패: {e}")
-            continue # 실패하면 다음 달로 넘어감
+            continue
 
         curr_date_only = ""
         for item in rows:
             cells = item.get('row', [])
-            game_id = item.get('G_ID', '')
+            
+            # 💡 [핵심 해결!] 좁은 칸(play_text)이 아니라 item 전체 문자열에서 Game ID를 싹쓸이로 찾아냅니다!
+            extracted_id = re.search(r'([0-9]{8}[A-Za-z]{4}[0-9])', str(item))
+            game_id = extracted_id.group(1) if extracted_id else ""
             
             day_cell = next((c for c in cells if c.get('Class') == 'day'), None)
             if day_cell:
@@ -111,7 +114,6 @@ def get_kbo_data():
                 if match: curr_date_only = f"{match.group(1)}-{match.group(2)}"
             
             if not curr_date_only: continue
-            # 개막일 필터 (3월 28일)
             if current_month == "03" and int(curr_date_only.split('-')[1]) < 28: continue
 
             full_date = f"{current_year}-{curr_date_only}"
@@ -127,25 +129,19 @@ def get_kbo_data():
             
             if play_cell:
                 play_text = play_cell.get('Text', '')
-                
-                # 💡 [핵심 추가] 숨겨진 13자리 Game ID 정규식으로 확실하게 추출
-                extracted_id = re.search(r'([0-9]{8}[A-Za-z]{4}[0-9])', play_text)
-                if extracted_id:
-                    game_id = extracted_id.group(1)
- 
                 soup = BeautifulSoup(play_text, 'html.parser')
                 spans = soup.find_all('span')
+                
                 if len(spans) >= 2:
                     away_team, home_team = spans[0].get_text(strip=True), spans[-1].get_text(strip=True)
                     if away_team not in VALID_TEAMS or home_team not in VALID_TEAMS: continue
                     
-                    h_score, a_score = None, None # 초기값을 None으로 유지
+                    h_score, a_score = None, None
                     h_line, a_line, h_rheb, a_rheb = None, None, None, None
                     is_cancel = "취소" in remark_text or "우천" in remark_text
                     
                     if not is_cancel:
                         em = soup.find('em')
-                        # em 태그가 있고 그 안에 숫자가 명확히 있을 때만 점수 기록
                         if em and len(em.find_all('span')) >= 3:
                             try:
                                 a_score_val = em.find_all('span')[0].text.strip()
@@ -154,10 +150,13 @@ def get_kbo_data():
                                 if a_score_val.isdigit() and h_score_val.isdigit():
                                     a_score = int(a_score_val)
                                     h_score = int(h_score_val)
-                                    h_line, a_line, h_rheb, a_rheb = get_line_score(game_id)
-                                    time.sleep(0.2)
+                                    
+                                    # 💡 game_id를 성공적으로 찾았을 때만 상세 점수를 요청!
+                                    if game_id:
+                                        h_line, a_line, h_rheb, a_rheb = get_line_score(game_id)
+                                        time.sleep(0.2)
                             except ValueError:
-                                pass # 숫자가 아니면 None 유지
+                                pass
 
                     all_results.append({
                         "date": full_date, "home": home_team, "away": away_team,
