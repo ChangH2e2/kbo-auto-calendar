@@ -5,6 +5,7 @@ from supabase import create_client
 import os
 import datetime
 import time
+import json
 
 URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
 KEY = os.environ.get("SUPABASE_KEY", "").strip()
@@ -36,33 +37,50 @@ def get_holidays(year):
     return holidays
 
 def get_line_score(game_id):
-    """경기 상세 이닝 점수 수집"""
+    """경기 상세 이닝 점수 및 RHEB 수집 (table2, table3 파싱)"""
     try:
-        url = "https://www.koreabaseball.com/ws/Schedule.asmx/GetScheduleLineScore"
-        
-        # 💡 [핵심 해결] KBO 서버가 요구하는 4가지 필수 파라미터 모두 전달
+        url = "https://www.koreabaseball.com/ws/Schedule.asmx/GetScoreBoardScroll"
         payload = {
             "leId": "1", 
             "srId": "0", 
-            "seasonId": game_id[:4],  # 20240501... 에서 '2024'만 자동 추출
+            "seasonId": game_id[:4], 
             "gameId": game_id
         }
-        
-        headers = {"Content-Type": "application/x-www-form-urlencoded; charset=UTF-8", "User-Agent": "Mozilla/5.0"}
+        headers = {"User-Agent": "Mozilla/5.0"}
         res = requests.post(url, data=payload, headers=headers, timeout=5)
         
         if res.status_code != 200:
             return None, None, None, None
             
         data = res.json()
-        h_line = "|".join([str(data.get(f'h{i}', '-')) for i in range(1, 13) if data.get(f'h{i}') is not None])
-        a_line = "|".join([str(data.get(f'a{i}', '-')) for i in range(1, 13) if data.get(f'a{i}') is not None])
-        h_rheb = f"{data.get('hR',0)}|{data.get('hH',0)}|{data.get('hE',0)}|{data.get('hB',0)}"
-        a_rheb = f"{data.get('aR',0)}|{data.get('aH',0)}|{data.get('aE',0)}|{data.get('aB',0)}"
+        
+        # 1. ⚾️ table2 에서 1~12회 이닝 점수 추출
+        table2_str = data.get('table2', '{}')
+        t2_dict = json.loads(table2_str) if table2_str else {}
+        t2_rows = t2_dict.get('rows', [])
+        
+        if len(t2_rows) >= 2:
+            a_line = "|".join([str(c.get('Text', '-')) for c in t2_rows[0].get('row', [])])
+            h_line = "|".join([str(c.get('Text', '-')) for c in t2_rows[1].get('row', [])])
+        else:
+            a_line, h_line = None, None
+            
+        # 2. ⚾️ table3 에서 R(득점), H(안타), E(실책), B(볼넷) 추출
+        table3_str = data.get('table3', '{}')
+        t3_dict = json.loads(table3_str) if table3_str else {}
+        t3_rows = t3_dict.get('rows', [])
+        
+        if len(t3_rows) >= 2:
+            a_rheb = "|".join([str(c.get('Text', '-')) for c in t3_rows[0].get('row', [])])
+            h_rheb = "|".join([str(c.get('Text', '-')) for c in t3_rows[1].get('row', [])])
+        else:
+            a_rheb, h_rheb = "-|-|-|-", "-|-|-|-"
+            
         return h_line, a_line, h_rheb, a_rheb
-    except Exception:
+        
+    except Exception as e:
+        print(f"상세 이닝 수집 에러 ({game_id}): {e}")
         return None, None, None, None
-
     
 def get_kbo_data():
     now = datetime.datetime.now()
