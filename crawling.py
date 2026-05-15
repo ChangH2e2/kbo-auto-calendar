@@ -173,8 +173,10 @@ def get_kbo_data():
                     away_team, home_team = spans[0].get_text(strip=True), spans[-1].get_text(strip=True)
                     if away_team not in VALID_TEAMS or home_team not in VALID_TEAMS: continue
                     
+                    # 💡 [중요] 변수 초기화 위치: 매 경기마다 새로 초기화해야 데이터가 안 꼬입니다.
                     h_score, a_score = None, None
                     h_line, a_line, h_rheb, a_rheb = None, None, None, None
+                    a_pitchers, h_pitchers = None, None # 투수 정보 초기화 추가
                     is_cancel = "취소" in remark_text or "우천" in remark_text
                     
                     if not is_cancel:
@@ -188,31 +190,30 @@ def get_kbo_data():
                                     a_score = int(a_score_val)
                                     h_score = int(h_score_val)
                                     
-                                    # 💡 game_id를 성공적으로 찾았을 때만 상세 점수를 요청!
+                                    # 💡 game_id가 있을 때만 상세 기록 호출
                                     if game_id:
-                                        # 1. 이닝 점수 & RHEB 가져오기
                                         h_line, a_line, h_rheb, a_rheb = get_line_score(game_id)
-                                        
-                                        # 2. [추가] 투수 정보 가져오기
                                         a_pitchers, h_pitchers = get_pitcher_info(game_id)
-                                        
                                         time.sleep(0.2)
                             except ValueError:
                                 pass
 
+                    # 💡 [해결] 누락되었던 stadium과 time을 다시 추가했습니다!
                     all_results.append({
                         "date": full_date, 
                         "home": home_team, 
                         "away": away_team,
                         "home_score": h_score, 
                         "away_score": a_score, 
+                        "stadium": stadium_name, # ✅ 다시 추가
+                        "time": game_time,       # ✅ 다시 추가
                         "game_id": game_id,
                         "home_line": h_line, 
                         "away_line": a_line, 
                         "home_rheb": h_rheb, 
                         "away_rheb": a_rheb,
-                        "away_pitchers": a_pitchers, # 🌟 추가
-                        "home_pitchers": h_pitchers, # 🌟 추가
+                        "away_pitchers": a_pitchers,
+                        "home_pitchers": h_pitchers,
                         "is_cancel": is_cancel,
                         "holiday_name": holidays.get(full_date)
                     })
