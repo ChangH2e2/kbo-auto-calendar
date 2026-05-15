@@ -39,11 +39,18 @@ def get_line_score(game_id):
     """경기 상세 이닝 점수 수집"""
     try:
         url = "https://www.koreabaseball.com/ws/Schedule.asmx/GetScheduleLineScore"
-        payload = {"gameId": game_id}
+        
+        # 💡 [핵심 해결] KBO 서버가 요구하는 4가지 필수 파라미터 모두 전달
+        payload = {
+            "leId": "1", 
+            "srId": "0", 
+            "seasonId": game_id[:4],  # 20240501... 에서 '2024'만 자동 추출
+            "gameId": game_id
+        }
+        
         headers = {"Content-Type": "application/x-www-form-urlencoded; charset=UTF-8", "User-Agent": "Mozilla/5.0"}
         res = requests.post(url, data=payload, headers=headers, timeout=5)
         
-        # 상태 코드가 200(정상)이 아니면 바로 포기
         if res.status_code != 200:
             return None, None, None, None
             
@@ -54,8 +61,8 @@ def get_line_score(game_id):
         a_rheb = f"{data.get('aR',0)}|{data.get('aH',0)}|{data.get('aE',0)}|{data.get('aB',0)}"
         return h_line, a_line, h_rheb, a_rheb
     except Exception:
-        # 이닝 정보 수집에 실패하면 조용히 빈 값 반환 (로그 도배 방지)
         return None, None, None, None
+
     
 def get_kbo_data():
     now = datetime.datetime.now()
