@@ -82,42 +82,63 @@ def get_line_score(game_id):
         print(f"상세 이닝 수집 에러 ({game_id}): {e}")
         return None, None, None, None
     
-def get_pitcher_info(game_id):
-    """박스스코어 API에서 투수진 정보 추출 (이중 JSON 껍질 제거)"""
+def get_boxscore_details(game_id):
+    """박스스코어 API에서 타자/투수 상세 기록을 JSON 형태로 완벽 추출"""
+    url = "https://www.koreabaseball.com/ws/Schedule.asmx/GetBoxScoreScroll"
+    payload = {"leId": "1", "srId": "0", "seasonId": game_id[:4], "gameId": game_id}
+    headers = {"User-Agent": "Mozilla/5.0"}
+    
     try:
-        url = "https://www.koreabaseball.com/ws/Schedule.asmx/GetBoxScoreScroll"
-        payload = {"leId": "1", "srId": "0", "seasonId": game_id[:4], "gameId": game_id}
-        res = requests.post(url, data=payload, headers={"User-Agent": "Mozilla/5.0"}, timeout=5)
-        
-        if res.status_code != 200: return None, None
-        
+        res = requests.post(url, data=payload, headers=headers, timeout=5)
         data = res.json()
-        pitcher_list = data.get('arrPitcher', [])
-        final_pitchers = []
-
-        for p_data in pitcher_list[:2]: # 0: 원정, 1: 홈
-            p_dict = json.loads(p_data) if isinstance(p_data, str) else p_data
-            table_str = p_dict.get('table', '{}')
-            table_data = json.loads(table_str) if isinstance(table_str, str) else table_str
-            
-            rows = table_data.get('rows', [])
-            team_pitchers = []
-            for row in rows:
-                cells = row.get('row', [])
-                if not cells: continue
-                name = BeautifulSoup(str(cells[0].get('Text', '')), 'html.parser').get_text(strip=True)
-                result = BeautifulSoup(str(cells[2].get('Text', '')), 'html.parser').get_text(strip=True).replace('&nbsp;', '')
-                if name and name != "선수명":
-                    team_pitchers.append(f"{name}({result})" if result else name)
-            final_pitchers.append("|".join(team_pitchers))
-            
-        # 원정팀 투수진(index 0), 홈팀 투수진(index 1) 반환
-        return final_pitchers[0] if len(final_pitchers) > 0 else None, \
-               final_pitchers[1] if len(final_pitchers) > 1 else None
     except Exception as e:
-        print(f"투수 정보 수집 에러 ({game_id}): {e}")
+        print(f"박스스코어 에러 ({game_id}): {e}")
         return None, None
 
+    def parse_rows(t_str):
+        t_dict = json.loads(t_str) if isinstance(t_str, str) else t_str
+        return [[BeautifulSoup(str(c.get('Text', '')), 'html.parser').get_text(strip=True) for c in r.get('row', [])] for r in t_dict.get('rows', [])]
+
+    hitter_details = {"away": [], "home": []}
+    pitcher_details = {"away": [], "home": []}
+    teams = ["away", "home"]
+
+    # 🏃‍♂️ 1. 타자 기록 파싱
+    for i, h_str in enumerate(data.get('arrHitter', [])[:2]):
+        h_dict = json.loads(h_str) if isinstance(h_str, str) else h_str
+        r1, r2, r3 = parse_rows(h_dict.get('table1', '{}')), parse_rows(h_dict.get('table2', '{}')), parse_rows(h_dict.get('table3', '{}'))
+
+        max_rows = max(len(r1), len(r2), len(r3))
+        for j in range(max_rows):
+            h = (r1[j] if j < len(r1) else []) + (r2[j] if j < len(r2) else []) + (r3[j] if j < len(r3) else [])
+            if not h or len(h) < 8 or "합계" in h: continue
+
+            bat_order, pos, name = h[0], h[1], h[2]
+            avg, rbi, hit, runs, ab = h[-1], h[-2], h[-3], h[-4], h[-5]
+            
+            order_str = f"[{bat_order}번]" if bat_order.isdigit() else "[대타]"
+            inning_results = [f"{idx+1}회:{rec}" for idx, rec in enumerate(h[3:-5]) if rec and rec not in ['-', '', ' ']]
+
+            hitter_details[teams[i]].append({
+                "order": order_str, "pos": pos, "name": name,
+                "ab": ab, "hit": hit, "rbi": rbi, "avg": avg,
+                "records": " | ".join(inning_results) if inning_results else "-"
+            })
+
+    # 🧤 2. 투수 기록 파싱
+    for i, p_str in enumerate(data.get('arrPitcher', [])[:2]):
+        p_dict = json.loads(p_str) if isinstance(p_str, str) else p_str
+        p_table = parse_rows(p_dict.get('table', p_dict.get('table1', '{}')))
+
+        for p in p_table:
+            if len(p) < 10 or p[0] in ["선수명", "TOTAL"]: continue
+            pitcher_details[teams[i]].append({
+                "name": p[0], "result": p[2], "ip": p[6],
+                "np": p[8], "so": p[13] if len(p)>13 else '-',
+                "er": p[14] if len(p)>14 else '-'
+            })
+
+    return hitter_details, pitcher_details
 
 def get_kbo_data():
     now = datetime.datetime.now()
@@ -189,35 +210,32 @@ def get_kbo_data():
                                 if a_score_val.isdigit() and h_score_val.isdigit():
                                     a_score = int(a_score_val)
                                     h_score = int(h_score_val)
-                                    
-                                    # 💡 game_id가 있을 때만 상세 기록 호출
                                     if game_id:
                                         h_line, a_line, h_rheb, a_rheb = get_line_score(game_id)
-                                        a_pitchers, h_pitchers = get_pitcher_info(game_id)
+                                        # 💡 투수/타자 상세 기록을 한 번에 가져옵니다!
+                                        hitters, pitchers = get_boxscore_details(game_id)
                                         time.sleep(0.2)
                             except ValueError:
                                 pass
 
-                    # 💡 [해결] 누락되었던 stadium과 time을 다시 추가했습니다!
                     all_results.append({
                         "date": full_date, 
                         "home": home_team, 
                         "away": away_team,
                         "home_score": h_score, 
                         "away_score": a_score, 
-                        "stadium": stadium_name, # ✅ 다시 추가
-                        "time": game_time,       # ✅ 다시 추가
+                        "stadium": stadium_name,
+                        "time": game_time,
                         "game_id": game_id,
                         "home_line": h_line, 
                         "away_line": a_line, 
                         "home_rheb": h_rheb, 
                         "away_rheb": a_rheb,
-                        "away_pitchers": a_pitchers,
-                        "home_pitchers": h_pitchers,
+                        "hitter_details": hitters,   # 🌟 새로 추가 (JSONB 매핑)
+                        "pitcher_details": pitchers, # 🌟 새로 추가 (JSONB 매핑)
                         "is_cancel": is_cancel,
                         "holiday_name": holidays.get(full_date)
-                    })
-    return all_results
+                    })    return all_results
 
 if __name__ == "__main__":
     data = get_kbo_data()
