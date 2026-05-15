@@ -42,16 +42,21 @@ def get_line_score(game_id):
         payload = {"gameId": game_id}
         headers = {"Content-Type": "application/x-www-form-urlencoded; charset=UTF-8", "User-Agent": "Mozilla/5.0"}
         res = requests.post(url, data=payload, headers=headers, timeout=5)
+        
+        # 상태 코드가 200(정상)이 아니면 바로 포기
+        if res.status_code != 200:
+            return None, None, None, None
+            
         data = res.json()
         h_line = "|".join([str(data.get(f'h{i}', '-')) for i in range(1, 13) if data.get(f'h{i}') is not None])
         a_line = "|".join([str(data.get(f'a{i}', '-')) for i in range(1, 13) if data.get(f'a{i}') is not None])
         h_rheb = f"{data.get('hR',0)}|{data.get('hH',0)}|{data.get('hE',0)}|{data.get('hB',0)}"
         a_rheb = f"{data.get('aR',0)}|{data.get('aH',0)}|{data.get('aE',0)}|{data.get('aB',0)}"
         return h_line, a_line, h_rheb, a_rheb
-    except Exception as e:
-        print(f"상세 이닝 정보 수집 실패 ({game_id}: {e})")
+    except Exception:
+        # 이닝 정보 수집에 실패하면 조용히 빈 값 반환 (로그 도배 방지)
         return None, None, None, None
-
+    
 def get_kbo_data():
     now = datetime.datetime.now()
     current_year = str(now.year)

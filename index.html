@@ -84,8 +84,7 @@
         if(!m) return;
         
         const modalBody = document.getElementById('modalBody');
-        // 경기 전에는 home_score가 null이어야 합니다. null이거나 undefined면 예매 창을 띄웁니다.
-        const isFinished = m.home_score !== null && m.home_score !== undefined;
+        const isFinished = m.home_score !== null && m.home_score !== undefined && m.home_score !== '';
         const isCancel = m.is_cancel === true;
         const awayWin = isFinished && Number(m.away_score) > Number(m.home_score);
         const homeWin = isFinished && Number(m.home_score) > Number(m.away_score);
@@ -93,6 +92,7 @@
         if (isCancel) {
             modalBody.innerHTML = `<div class="text-center py-10"><div class="text-red-500 font-black text-lg mb-2">우천취소</div><div class="text-2xl font-black mb-4">${m.home} VS ${m.away}</div><p class="text-gray-500 text-sm">해당 경기는 기상 상황으로 인해 취소되었습니다.</p></div>`;
         } else if (isFinished) {
+            // 이닝 정보가 없으면 빈 배열로 처리하여 화면이 깨지지 않게 방어
             const hL = m.home_line ? m.home_line.split('|') : [];
             const aL = m.away_line ? m.away_line.split('|') : [];
             const hR = m.home_rheb ? m.home_rheb.split('|') : ['0','0','0','0'];
@@ -104,22 +104,8 @@
             const getRow = (line) => {
                 let res = '';
                 for(let i=0; i<Math.max(line.length, 9); i++) res += `<td class="inning-cell font-bold">${line[i] || '-'}</td>`;
-                return res;}
-            } else {
-        // 예정된 경기: 예매 버튼 노출
-        modalBody.innerHTML = `
-            <div class="text-center py-6">
-                <div class="text-sm font-bold text-blue-500 mb-2">${m.date} ${m.time} 예정</div>
-                <div class="text-2xl font-black mb-8">${m.home} VS ${m.away}</div>
-                <div class="space-y-3">
-                    <p class="text-gray-500 text-sm mb-4 font-medium italic">📍 ${m.stadium}</p>
-                    <a href="https://www.ticketlink.co.kr/sports/baseball" target="_blank" class="block w-full py-3 rounded-xl font-black text-white bg-red-500 hover:bg-red-600 transition-shadow shadow-lg">티켓링크 예매</a>
-                    <a href="https://ticket.interpark.com/Contents/Sports/GoodsInfo?SportsCode=07001" target="_blank" class="block w-full py-3 rounded-xl font-black text-white bg-slate-900 hover:bg-slate-800 transition-shadow shadow-lg">인터파크 예매</a>
-                </div>
-            </div>`;
-        }
-        document.getElementById('detailModal').classList.remove('hidden');
-    }
+                return res;
+            };
 
             modalBody.innerHTML = `
                 <div class="flex justify-between items-center mb-8 px-2">
@@ -137,15 +123,15 @@
                     </table>
                 </div>`;
         } else {
-            // [수정] 예매 페이지 선택 창 추가
+            // 예정된 경기: 예매 버튼 노출
             modalBody.innerHTML = `
                 <div class="text-center py-6">
-                    <div class="text-sm font-bold text-blue-500 mb-2">${m.date} ${m.time} 예정</div>
-                    <div class="text-2xl font-black mb-8">${m.home} VS ${m.away}</div>
-                    <div class="space-y-3">
-                        <p class="text-gray-500 text-sm mb-4 font-medium italic">📍 ${m.stadium}</p>
-                        <a href="https://www.ticketlink.co.kr/sports/baseball" target="_blank" class="block w-full py-3 rounded-xl font-black text-white bg-red-500 hover:bg-red-600 transition-colors">티켓링크에서 예매하기</a>
-                        <a href="https://ticket.interpark.com/Contents/Sports/GoodsInfo?SportsCode=07001" target="_blank" class="block w-full py-3 rounded-xl font-black text-white bg-slate-900 hover:bg-slate-800 transition-colors">인터파크에서 예매하기</a>
+                    <div class="inline-block bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-[0.7rem] font-black tracking-wider mb-4 border border-blue-100">${m.date} ${m.time} 예정</div>
+                    <div class="text-3xl font-black mb-2">${m.home} <span class="text-gray-300 text-xl mx-2">VS</span> ${m.away}</div>
+                    <p class="text-gray-500 text-sm mb-8 font-medium">📍 ${m.stadium}</p>
+                    <div class="space-y-3 flex flex-col px-4">
+                        <a href="https://www.ticketlink.co.kr/sports/baseball" target="_blank" class="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-black text-white bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 shadow-md">🎟️ 티켓링크 예매하기</a>
+                        <a href="https://ticket.interpark.com/Contents/Sports/GoodsInfo?SportsCode=07001" target="_blank" class="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-black text-white bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-900 shadow-md">🎫 인터파크 예매하기</a>
                     </div>
                 </div>`;
         }
