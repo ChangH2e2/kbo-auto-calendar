@@ -235,7 +235,8 @@ def get_kbo_data():
                         "pitcher_details": pitchers, # 🌟 새로 추가 (JSONB 매핑)
                         "is_cancel": is_cancel,
                         "holiday_name": holidays.get(full_date)
-                    })    return all_results
+                    })
+    return all_results
 
 if __name__ == "__main__":
     data = get_kbo_data()

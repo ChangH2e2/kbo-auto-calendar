@@ -100,6 +100,18 @@
         }
     }
 
+    window.switchTab = function(tabName) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('[id^="btn-tab-"]').forEach(el => {
+            el.classList.remove('border-blue-600', 'text-blue-600');
+            el.classList.add('border-transparent', 'text-gray-400');
+        });
+        
+        document.getElementById('tab-' + tabName).classList.remove('hidden');
+        document.getElementById('btn-tab-' + tabName).classList.remove('border-transparent', 'text-gray-400');
+        document.getElementById('btn-tab-' + tabName).classList.add('border-blue-600', 'text-blue-600');
+    };
+
     function openDetail(date, home, away) {
         const m = allMatches.find(x => x.date === date && x.home === home && x.away === away);
         if(!m) return;
@@ -107,23 +119,17 @@
         const modalBody = document.getElementById('modalBody');
         const isCancel = m.is_cancel === true;
         
-        // [핵심 로직] 현재 시간과 경기 시작 시간 비교
         const now = new Date();
         const gameDateTime = new Date(`${m.date}T${m.time}:00`);
-        const hasStarted = now >= gameDateTime; // 시간이 지났으면 시작한 것으로 간주
+        const hasStarted = now >= gameDateTime; 
         
         const isFinished = hasStarted && m.home_score !== null && m.home_score !== undefined && m.home_score !== '';
         const awayWin = isFinished && Number(m.away_score) > Number(m.home_score);
         const homeWin = isFinished && Number(m.home_score) > Number(m.away_score);
 
-        // ⚾️ [추가] DB에서 가져온 투수 명단을 보기 좋게 가공 ('|'를 ' | '로 변경)
-        const awayP = m.away_pitchers ? m.away_pitchers.replaceAll('|', ' | ') : '정보 없음';
-        const homeP = m.home_pitchers ? m.home_pitchers.replaceAll('|', ' | ') : '정보 없음';
-
         if (isCancel) {
             modalBody.innerHTML = `<div class="text-center py-10"><div class="text-red-500 font-black text-lg mb-2">우천취소</div><div class="text-2xl font-black mb-4">${m.home} VS ${m.away}</div><p class="text-gray-500 text-sm">해당 경기는 기상 상황으로 인해 취소되었습니다.</p></div>`;
         } else if (isFinished) {
-            // 이닝 점수 정보 (경기 진행 중 또는 종료)
             const hL = m.home_line ? m.home_line.split('|') : [];
             const aL = m.away_line ? m.away_line.split('|') : [];
             const hR = m.home_rheb ? m.home_rheb.split('|') : ['0','0','0','0'];
@@ -131,41 +137,99 @@
             
             let innings = '';
             for(let i=1; i<=Math.max(hL.length, 9); i++) innings += `<th class="inning-cell">${i}</th>`;
-
             const getRow = (line) => {
                 let res = '';
                 for(let i=0; i<Math.max(line.length, 9); i++) res += `<td class="inning-cell font-bold">${line[i] || '-'}</td>`;
                 return res;
             };
 
-            modalBody.innerHTML = `
-                <div class="flex justify-between items-center mb-8 px-2">
-                    <div class="text-center"><div class="text-xl font-black ${homeWin ? 'text-blue-600' : ''}">${m.home}</div><div class="text-[0.6rem] text-gray-400">HOME</div></div>
-                    <div class="text-3xl font-black text-blue-600">${m.home_score} : ${m.away_score}</div>
+            // 🌟 1. 공통 헤더 (팀 및 점수)
+            let html = `
+                <div class="flex justify-between items-center mb-6 px-2">
                     <div class="text-center"><div class="text-xl font-black ${awayWin ? 'text-blue-600' : ''}">${m.away}</div><div class="text-[0.6rem] text-gray-400">AWAY</div></div>
+                    <div class="text-3xl font-black tracking-tighter">${m.away_score} : ${m.home_score}</div>
+                    <div class="text-center"><div class="text-xl font-black ${homeWin ? 'text-blue-600' : ''}">${m.home}</div><div class="text-[0.6rem] text-gray-400">HOME</div></div>
                 </div>
-                <div class="overflow-x-auto border rounded-xl shadow-sm">
-                    <table class="w-full text-center">
-                        <thead class="bg-gray-50 border-b"><tr><th class="p-2 text-[0.6rem] text-left">팀</th>${innings}<th class="rheb-cell">R</th><th class="rheb-cell">H</th><th class="rheb-cell">E</th><th class="rheb-cell">B</th></tr></thead>
-                        <tbody>
-                            <tr class="border-b"><td class="p-2 text-[0.65rem] font-bold">${m.home}</td>${getRow(hL)}<td class="rheb-cell text-red-500">${hR[0]}</td><td class="rheb-cell">${hR[1]}</td><td class="rheb-cell">${hR[2]}</td><td class="rheb-cell">${hR[3]}</td></tr>
-                            <tr><td class="p-2 text-[0.65rem] font-bold">${m.away}</td>${getRow(aL)}<td class="rheb-cell text-red-500">${aR[0]}</td><td class="rheb-cell">${aR[1]}</td><td class="rheb-cell">${aR[2]}</td><td class="rheb-cell">${aR[3]}</td></tr>
-                        </tbody>
-                    </table>
-                </div>
+                
+                <div class="flex border-b mb-4">
+                    <button onclick="switchTab('score')" id="btn-tab-score" class="flex-1 py-2 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition-colors">스코어보드</button>
+                    <button onclick="switchTab('hitter')" id="btn-tab-hitter" class="flex-1 py-2 text-sm font-bold border-b-2 border-transparent text-gray-400 transition-colors">타자 기록</button>
+                    <button onclick="switchTab('pitcher')" id="btn-tab-pitcher" class="flex-1 py-2 text-sm font-bold border-b-2 border-transparent text-gray-400 transition-colors">투수 기록</button>
+                </div>`;
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-6 border-t pt-4">
-                    <div class="bg-blue-50/50 p-3 rounded-xl border border-blue-100">
-                        <p class="text-[0.6rem] font-black text-blue-600 mb-1 uppercase tracking-tighter">Away Pitchers</p>
-                        <p class="text-[0.7rem] text-gray-700 font-medium leading-relaxed">${awayP}</p>
-                    </div>
-                    <div class="bg-red-50/50 p-3 rounded-xl border border-red-100">
-                        <p class="text-[0.6rem] font-black text-red-600 mb-1 uppercase tracking-tighter">Home Pitchers</p>
-                        <p class="text-[0.7rem] text-gray-700 font-medium leading-relaxed">${homeP}</p>
+            // 🌟 3. 스코어보드 탭 (기본 노출)
+            html += `
+                <div id="tab-score" class="tab-content block pb-4">
+                    <div class="overflow-x-auto border rounded-xl shadow-sm">
+                        <table class="w-full text-center">
+                            <thead class="bg-gray-50 border-b"><tr><th class="p-2 text-[0.6rem] text-left">팀</th>${innings}<th class="rheb-cell">R</th><th class="rheb-cell">H</th><th class="rheb-cell">E</th><th class="rheb-cell">B</th></tr></thead>
+                            <tbody>
+                                <tr class="border-b"><td class="p-2 text-[0.65rem] font-bold">${m.away}</td>${getRow(aL)}<td class="rheb-cell text-red-500">${aR[0]}</td><td class="rheb-cell">${aR[1]}</td><td class="rheb-cell">${aR[2]}</td><td class="rheb-cell">${aR[3]}</td></tr>
+                                <tr><td class="p-2 text-[0.65rem] font-bold">${m.home}</td>${getRow(hL)}<td class="rheb-cell text-red-500">${hR[0]}</td><td class="rheb-cell">${hR[1]}</td><td class="rheb-cell">${hR[2]}</td><td class="rheb-cell">${hR[3]}</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>`;
+
+            // 🌟 4. 타자 기록 탭 (JSON 렌더링)
+            const renderHitters = (teamData) => {
+                if(!teamData || teamData.length === 0) return '<tr><td colspan="6" class="p-4 text-center text-xs text-gray-500">아직 데이터가 업데이트되지 않았습니다.</td></tr>';
+                return teamData.map(h => `
+                    <tr class="border-b border-gray-50 hover:bg-gray-50">
+                        <td class="p-2 text-gray-500">${h.order}</td>
+                        <td class="p-2 font-bold">${h.name}<span class="text-[0.55rem] font-normal text-gray-400 ml-1">${h.pos}</span></td>
+                        <td class="p-2">${h.ab}</td><td class="p-2 font-bold text-blue-600">${h.hit}</td>
+                        <td class="p-2">${h.rbi}</td><td class="p-2 text-gray-600">${h.avg}</td>
+                        <td class="p-2 text-left text-[0.6rem] text-gray-500 min-w-[120px] whitespace-normal leading-tight">${h.records}</td>
+                    </tr>`).join('');
+            };
+
+            html += `
+                <div id="tab-hitter" class="tab-content hidden h-[300px] overflow-y-auto overflow-x-auto pb-4">
+                    <div class="sticky top-0 bg-white/90 backdrop-blur-sm p-1 font-bold text-xs text-blue-600">🏃‍♂️ ${m.away} (원정)</div>
+                    <table class="w-full text-center text-[0.65rem] whitespace-nowrap mb-4">
+                        <thead class="bg-gray-100/80 text-[0.6rem] text-gray-600"><tr><th class="p-1.5">타순</th><th class="p-1.5 text-left">선수명</th><th class="p-1.5">타수</th><th class="p-1.5">안타</th><th class="p-1.5">타점</th><th class="p-1.5">타율</th><th class="p-1.5 text-left">이닝 상세</th></tr></thead>
+                        <tbody>${m.hitter_details ? renderHitters(m.hitter_details.away) : ''}</tbody>
+                    </table>
+                    <div class="sticky top-0 bg-white/90 backdrop-blur-sm p-1 font-bold text-xs text-red-600">🏃‍♂️ ${m.home} (홈)</div>
+                    <table class="w-full text-center text-[0.65rem] whitespace-nowrap">
+                        <thead class="bg-gray-100/80 text-[0.6rem] text-gray-600"><tr><th class="p-1.5">타순</th><th class="p-1.5 text-left">선수명</th><th class="p-1.5">타수</th><th class="p-1.5">안타</th><th class="p-1.5">타점</th><th class="p-1.5">타율</th><th class="p-1.5 text-left">이닝 상세</th></tr></thead>
+                        <tbody>${m.hitter_details ? renderHitters(m.hitter_details.home) : ''}</tbody>
+                    </table>
+                </div>`;
+
+            // 🌟 5. 투수 기록 탭 (JSON 렌더링)
+            const renderPitchers = (teamData) => {
+                if(!teamData || teamData.length === 0) return '<tr><td colspan="6" class="p-4 text-center text-xs text-gray-500">아직 데이터가 업데이트되지 않았습니다.</td></tr>';
+                return teamData.map(p => {
+                    const resColor = p.result.includes('승') ? 'text-blue-600' : p.result.includes('패') ? 'text-red-600' : 'text-gray-500';
+                    return `
+                    <tr class="border-b border-gray-50 hover:bg-gray-50">
+                        <td class="p-2 font-bold text-left">${p.name}</td>
+                        <td class="p-2 font-black ${resColor}">${p.result || '-'}</td>
+                        <td class="p-2">${p.ip}</td><td class="p-2">${p.np}</td>
+                        <td class="p-2 font-bold text-red-500">${p.so}</td><td class="p-2">${p.er}</td>
+                    </tr>`;
+                }).join('');
+            };
+
+            html += `
+                <div id="tab-pitcher" class="tab-content hidden h-[300px] overflow-y-auto pb-4">
+                     <div class="sticky top-0 bg-white/90 backdrop-blur-sm p-1 font-bold text-xs text-blue-600">🧤 ${m.away} (원정)</div>
+                    <table class="w-full text-center text-[0.65rem] whitespace-nowrap mb-4">
+                        <thead class="bg-gray-100/80 text-[0.6rem] text-gray-600"><tr><th class="p-1.5 text-left">선수명</th><th class="p-1.5">결과</th><th class="p-1.5">이닝</th><th class="p-1.5">투구수</th><th class="p-1.5">삼진</th><th class="p-1.5">실점</th></tr></thead>
+                        <tbody>${m.pitcher_details ? renderPitchers(m.pitcher_details.away) : ''}</tbody>
+                    </table>
+                    <div class="sticky top-0 bg-white/90 backdrop-blur-sm p-1 font-bold text-xs text-red-600">🧤 ${m.home} (홈)</div>
+                    <table class="w-full text-center text-[0.65rem] whitespace-nowrap">
+                        <thead class="bg-gray-100/80 text-[0.6rem] text-gray-600"><tr><th class="p-1.5 text-left">선수명</th><th class="p-1.5">결과</th><th class="p-1.5">이닝</th><th class="p-1.5">투구수</th><th class="p-1.5">삼진</th><th class="p-1.5">실점</th></tr></thead>
+                        <tbody>${m.pitcher_details ? renderPitchers(m.pitcher_details.home) : ''}</tbody>
+                    </table>
+                </div>`;
                 
+            modalBody.innerHTML = html;
         } else {
+
             const ticket = getTicketStatus(m.home, m.date); 
             
             modalBody.innerHTML = `
