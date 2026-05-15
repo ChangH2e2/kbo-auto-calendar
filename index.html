@@ -116,6 +116,10 @@
         const awayWin = isFinished && Number(m.away_score) > Number(m.home_score);
         const homeWin = isFinished && Number(m.home_score) > Number(m.away_score);
 
+        // ⚾️ [추가] DB에서 가져온 투수 명단을 보기 좋게 가공 ('|'를 ' | '로 변경)
+        const awayP = m.away_pitchers ? m.away_pitchers.replaceAll('|', ' | ') : '정보 없음';
+        const homeP = m.home_pitchers ? m.home_pitchers.replaceAll('|', ' | ') : '정보 없음';
+
         if (isCancel) {
             modalBody.innerHTML = `<div class="text-center py-10"><div class="text-red-500 font-black text-lg mb-2">우천취소</div><div class="text-2xl font-black mb-4">${m.home} VS ${m.away}</div><p class="text-gray-500 text-sm">해당 경기는 기상 상황으로 인해 취소되었습니다.</p></div>`;
         } else if (isFinished) {
@@ -148,7 +152,19 @@
                             <tr><td class="p-2 text-[0.65rem] font-bold">${m.away}</td>${getRow(aL)}<td class="rheb-cell text-red-500">${aR[0]}</td><td class="rheb-cell">${aR[1]}</td><td class="rheb-cell">${aR[2]}</td><td class="rheb-cell">${aR[3]}</td></tr>
                         </tbody>
                     </table>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-6 border-t pt-4">
+                    <div class="bg-blue-50/50 p-3 rounded-xl border border-blue-100">
+                        <p class="text-[0.6rem] font-black text-blue-600 mb-1 uppercase tracking-tighter">Away Pitchers</p>
+                        <p class="text-[0.7rem] text-gray-700 font-medium leading-relaxed">${awayP}</p>
+                    </div>
+                    <div class="bg-red-50/50 p-3 rounded-xl border border-red-100">
+                        <p class="text-[0.6rem] font-black text-red-600 mb-1 uppercase tracking-tighter">Home Pitchers</p>
+                        <p class="text-[0.7rem] text-gray-700 font-medium leading-relaxed">${homeP}</p>
+                    </div>
                 </div>`;
+                
         } else {
             const ticket = getTicketStatus(m.home, m.date); 
             
