@@ -90,7 +90,14 @@ def get_kbo_data():
             play_cell = next((c for c in cells if c.get('Class') == 'play'), None)
             
             if play_cell:
-                soup = BeautifulSoup(play_cell.get('Text', ''), 'html.parser')
+                play_text = play_cell.get('Text', '')
+                
+                # 💡 [핵심 추가] 숨겨진 13자리 Game ID 정규식으로 확실하게 추출
+                extracted_id = re.search(r'([0-9]{8}[A-Za-z]{4}[0-9])', play_text)
+                if extracted_id:
+                    game_id = extracted_id.group(1)
+ 
+                soup = BeautifulSoup(play_text, 'html.parser')
                 spans = soup.find_all('span')
                 if len(spans) >= 2:
                     away_team, home_team = spans[0].get_text(strip=True), spans[-1].get_text(strip=True)

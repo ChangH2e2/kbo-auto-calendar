@@ -79,13 +79,13 @@
         }
     }
 
-    function openDetail(gameId) {
-        const m = allMatches.find(x => x.game_id === gameId);
+    function openDetail(date, home, away) {
+        const m = allMatches.find(x => x.date === date && x.home === home && x.away === away);
         if(!m) return;
         
         const modalBody = document.getElementById('modalBody');
         // 경기 전에는 home_score가 null이어야 합니다. null이거나 undefined면 예매 창을 띄웁니다.
-        const isFinished = m.home_score !== null && m.home_score !== undefined && m.home_score !== '';
+        const isFinished = m.home_score !== null && m.home_score !== undefined;
         const isCancel = m.is_cancel === true;
         const awayWin = isFinished && Number(m.away_score) > Number(m.home_score);
         const homeWin = isFinished && Number(m.home_score) > Number(m.away_score);
@@ -104,8 +104,22 @@
             const getRow = (line) => {
                 let res = '';
                 for(let i=0; i<Math.max(line.length, 9); i++) res += `<td class="inning-cell font-bold">${line[i] || '-'}</td>`;
-                return res;
-            };
+                return res;}
+            } else {
+        // 예정된 경기: 예매 버튼 노출
+        modalBody.innerHTML = `
+            <div class="text-center py-6">
+                <div class="text-sm font-bold text-blue-500 mb-2">${m.date} ${m.time} 예정</div>
+                <div class="text-2xl font-black mb-8">${m.home} VS ${m.away}</div>
+                <div class="space-y-3">
+                    <p class="text-gray-500 text-sm mb-4 font-medium italic">📍 ${m.stadium}</p>
+                    <a href="https://www.ticketlink.co.kr/sports/baseball" target="_blank" class="block w-full py-3 rounded-xl font-black text-white bg-red-500 hover:bg-red-600 transition-shadow shadow-lg">티켓링크 예매</a>
+                    <a href="https://ticket.interpark.com/Contents/Sports/GoodsInfo?SportsCode=07001" target="_blank" class="block w-full py-3 rounded-xl font-black text-white bg-slate-900 hover:bg-slate-800 transition-shadow shadow-lg">인터파크 예매</a>
+                </div>
+            </div>`;
+        }
+        document.getElementById('detailModal').classList.remove('hidden');
+    }
 
             modalBody.innerHTML = `
                 <div class="flex justify-between items-center mb-8 px-2">
@@ -157,7 +171,7 @@
         const teamStyle = (isWin) => isWin ? "font-black text-blue-600 scale-105" : "font-medium text-gray-500";
 
         return `
-        <div onclick="openDetail('${m.game_id}')" class="cursor-pointer bg-white border border-gray-100 rounded-lg p-2 mb-1.5 shadow-sm hover:border-blue-400 transition-all">
+        <div onclick="openDetail('${m.date}', '${m.home}', '${m.away}')" class="cursor-pointer bg-white border border-gray-100 rounded-lg p-2 mb-1.5 shadow-sm hover:border-blue-400 transition-all">
             <div class="flex justify-between items-center w-full text-[0.65rem] md:text-xs">
                 <div class="flex-1 text-right ${teamStyle(homeWin)} truncate">
                     <span class="text-[0.55rem] text-gray-300 mr-0.5 font-normal">(홈)</span>${m.home}
