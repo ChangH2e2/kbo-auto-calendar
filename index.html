@@ -79,7 +79,13 @@
         renderView();
     }
 
-    function closeModal() { document.getElementById('detailModal').classList.add('hidden'); }
+    let allMatches = [], currentDate = new Date(), viewMode = 'month';
+    let countdownInterval; // 실시간 타이머 아이디 저장용
+
+    function closeModal() { 
+        document.getElementById('detailModal').classList.add('hidden'); 
+        if (countdownInterval) clearInterval(countdownInterval); // 창 닫을 때 타이머 정지
+    }
 
     function updateButtonUI() {
         const monthBtn = document.getElementById('modeMonth');
@@ -143,18 +149,16 @@
                     </table>
                 </div>`;
         } else {
-            // [업그레이드!] 홈팀 정보를 넘겨서 구단별 맞춤 티켓 정보를 받아옴
             const ticket = getTicketStatus(m.home, m.date); 
-            const statusBg = ticket.isOpen ? 'bg-green-50 border-green-200 text-green-700' : 'bg-orange-50 border-orange-200 text-orange-700';
-
+            
             modalBody.innerHTML = `
                 <div class="text-center py-4">
                     <div class="inline-block bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-[0.7rem] font-black tracking-wider mb-4 border border-blue-100">${m.date} ${m.time} 예정</div>
                     <div class="text-3xl font-black mb-2">${m.home} <span class="text-gray-300 text-xl mx-2">VS</span> ${m.away}</div>
                     <p class="text-gray-500 text-sm mb-6 font-medium">📍 ${m.stadium}</p>
 
-                    <div class="mb-6 p-3 ${statusBg} border rounded-xl shadow-sm font-black text-sm transition-all">
-                        ${ticket.text}
+                    <div id="countdownBox" class="mb-6 p-4 border rounded-xl shadow-sm transition-all text-center">
+                        <span class="text-gray-400 font-bold text-sm">시간 계산 중...</span>
                     </div>
 
                     <div class="space-y-3 flex flex-col px-4">
@@ -163,35 +167,70 @@
                         </a>
                     </div>
                 </div>`;
+                
+            document.getElementById('detailModal').classList.remove('hidden');
+
+            // [핵심!] 1초마다 실행되는 실시간 타이머 로직
+            if (countdownInterval) clearInterval(countdownInterval); // 혹시 돌고 있는 타이머 리셋
+            
+            function updateTimer() {
+                const now = new Date();
+                const diffMs = ticket.openDate.getTime() - now.getTime();
+                const box = document.getElementById('countdownBox');
+                
+                if (!box) {
+                    clearInterval(countdownInterval);
+                    return;
+                }
+
+                // 예매 시간이 지났을 때
+                if (diffMs <= 0) {
+                    box.className = "mb-6 p-4 bg-green-50 border-green-200 border rounded-xl shadow-sm text-center";
+                    box.innerHTML = `<span class="text-green-700 font-black text-lg">🟢 예매 진행 중</span><div class="text-xs text-green-600 mt-1">지금 바로 잔여석을 확인하세요!</div>`;
+                    clearInterval(countdownInterval);
+                    return;
+                }
+
+                // 남은 시간 계산
+                const d = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                const h = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const m_min = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                const s = Math.floor((diffMs % (1000 * 60)) / 1000);
+
+                box.className = "mb-6 p-4 bg-orange-50 border-orange-200 border rounded-xl shadow-sm text-center";
+                
+                // 오픈 날짜 포맷팅 (예: 5/16 10시)
+                const month = ticket.openDate.getMonth() + 1;
+                const date = ticket.openDate.getDate();
+                const hour = ticket.openDate.getHours();
+
+                // 시간이 10보다 작으면 앞에 0 붙이기 (예: 09초)
+                const formatTime = (num) => String(num).padStart(2, '0');
+
+                let timeString = d > 0 ? `${d}일 ${formatTime(h)}:${formatTime(m_min)}:${formatTime(s)}` : `${formatTime(h)}:${formatTime(m_min)}:${formatTime(s)}`;
+
+                box.innerHTML = `
+                    <div class="text-orange-700 font-bold text-sm mb-1">⏳ ${month}/${date} ${hour}시 오픈 예정</div>
+                    <div class="text-3xl text-red-500 font-black tracking-widest" style="font-variant-numeric: tabular-nums;">
+                        ${timeString}
+                    </div>
+                `;
+            }
+
+            updateTimer(); // 모달 켜지자마자 즉시 1번 실행
+            countdownInterval = setInterval(updateTimer, 1000); // 이후 1초마다 업데이트
         }
-        document.getElementById('detailModal').classList.remove('hidden');
-    }
 
     // 👇 기존 getTicketStatus 함수를 지우고 아래 코드로 교체하세요!
     function getTicketStatus(homeTeam, gameDateStr) {
-        // 홈팀의 정책을 가져오고, 만약 데이터가 없으면 기본값(티켓링크, 7일전 11시) 적용
         const rule = TEAM_RULES[homeTeam] || { daysBefore: 7, openTime: 11, vendor: "티켓링크", url: "https://m.ticketlink.co.kr" };
-        
-        const now = new Date();
         const gameDate = new Date(gameDateStr);
         
         // 경기일 기준 며칠 전, 몇 시인지 계산
         const openDate = new Date(gameDate.getTime() - (rule.daysBefore * 24 * 60 * 60 * 1000));
         openDate.setHours(rule.openTime, 0, 0, 0);
 
-        const diffMs = openDate.getTime() - now.getTime();
-        
-        // 이미 예매가 시작된 경우
-        if (diffMs <= 0) return { isOpen: true, text: `🟢 ${rule.vendor} 예매 진행 중`, url: rule.url, vendor: rule.vendor };
-        
-        const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        
-        // 예매 시작 전인 경우 (D-day 및 오픈 시간 명시)
-        if (days > 0) return { isOpen: false, text: `⏳ 예매 오픈까지 D-${days} (${hours}시간 남음)`, url: rule.url, vendor: rule.vendor };
-        if (hours > 0) return { isOpen: false, text: `🔥 오늘 ${rule.openTime}시 오픈! (${hours}시간 남음)`, url: rule.url, vendor: rule.vendor };
-        
-        return { isOpen: false, text: `🚨 곧 예매가 시작됩니다!`, url: rule.url, vendor: rule.vendor };
+        return { openDate: openDate, url: rule.url, vendor: rule.vendor };
     }
 
     function getMatchHTML(m, mode) {
