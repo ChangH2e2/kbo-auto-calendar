@@ -79,7 +79,6 @@
         renderView();
     }
 
-    let allMatches = [], currentDate = new Date(), viewMode = 'month';
     let countdownInterval; // 실시간 타이머 아이디 저장용
 
     function closeModal() { 
@@ -220,6 +219,7 @@
             updateTimer(); // 모달 켜지자마자 즉시 1번 실행
             countdownInterval = setInterval(updateTimer, 1000); // 이후 1초마다 업데이트
         }
+    }
 
     // 👇 기존 getTicketStatus 함수를 지우고 아래 코드로 교체하세요!
     function getTicketStatus(homeTeam, gameDateStr) {
