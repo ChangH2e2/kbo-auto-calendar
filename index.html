@@ -358,23 +358,24 @@
                 </div>
             </div>`;
         } else {
-            // 🌟 [월간 뷰] 가로 스크롤 방지를 위해 극단적 다이어트! (여백 최소화)
+            // 🌟 [월간 뷰] 가로 스크롤 방지를 위해 극단적 다이어트! (여백 최소화 & 글자 축소)
             let centerDisplay = `<span class="text-gray-300 font-light mx-[1px] md:mx-1 text-[0.45rem] md:text-xs">vs</span>`;
             if (isUchwi) {
                 centerDisplay = `<span class="bg-red-50 text-red-600 px-[2px] rounded-sm font-black text-[0.4rem] md:text-[0.6rem] border border-red-200 mx-[1px]">취소</span>`;
             } else if (hasStarted && m.home_score !== null && m.home_score !== undefined) {
-                centerDisplay = `<span class="font-black mx-[2px] md:mx-1.5 text-gray-800 text-[0.55rem] md:text-xs tracking-tighter">
+                // 💡 점수 텍스트 크기를 text-[0.5rem]으로 더 줄였습니다.
+                centerDisplay = `<span class="font-black mx-[1px] md:mx-1.5 text-gray-800 text-[0.5rem] md:text-xs tracking-tighter">
                     <span class="${homeWin ? 'text-blue-600' : ''}">${m.home_score}</span>:<span class="${awayWin ? 'text-blue-600' : ''}">${m.away_score}</span>
                 </span>`;
             }
 
-            // 여백(padding)을 p-[2px] 수준으로 줄여서 7일이 한 화면에 딱 맞게 합니다.
+            // 💡 [핵심 방어] overflow-hidden 과 whitespace-nowrap 추가!
             return `
-            <div onclick="openDetail('${m.date}', '${m.home}', '${m.away}')" class="cursor-pointer bg-white border border-gray-100 rounded md:rounded-lg p-[2px] md:p-2 mb-[3px] shadow-sm hover:border-blue-400 transition-all">
-                <div class="flex justify-center items-center w-full text-[0.55rem] md:text-xs tracking-tighter">
-                    <div class="text-right ${teamStyle(homeWin)} leading-none">${m.home}</div>
+            <div onclick="openDetail('${m.date}', '${m.home}', '${m.away}')" class="cursor-pointer bg-white border border-gray-100 rounded md:rounded-lg p-[2px] md:p-2 mb-[2px] shadow-sm hover:border-blue-400 transition-all overflow-hidden">
+                <div class="flex justify-center items-center w-full text-[0.5rem] md:text-xs tracking-tighter whitespace-nowrap">
+                    <div class="text-right ${teamStyle(homeWin)} leading-none truncate">${m.home}</div>
                     ${centerDisplay}
-                    <div class="text-left ${teamStyle(awayWin)} leading-none">${m.away}</div>
+                    <div class="text-left ${teamStyle(awayWin)} leading-none truncate">${m.away}</div>
                 </div>
                 <div class="text-[0.4rem] md:text-[0.5rem] text-gray-400 mt-[2px] md:mt-1 text-center font-medium truncate leading-none">
                     ${m.stadium} ${m.time}
