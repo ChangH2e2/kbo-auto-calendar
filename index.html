@@ -39,7 +39,13 @@
                 </div>
             </div>
         </header>
-        <div id="calendar" class="w-full"></div>
+        <div class="max-w-6xl mx-auto">
+        <header class="bg-white p-4 rounded-xl shadow-sm mb-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            </header>
+        
+        <div class="w-full overflow-x-auto pb-4">
+            <div id="calendar" class="w-full"></div>
+        </div>
     </div>
 
     <div id="detailModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
@@ -71,7 +77,9 @@
         "한화": { vendor: "이글콕/티켓링크", url: "https://m.ticketlink.co.kr/sports/baseball/60", daysBefore: 7, openTime: 11 }
     };
 
-    let allMatches = [], currentDate = new Date(), viewMode = 'month';
+    let allMatches = [], currentDate = new Date();
+    // 💡 화면이 작으면(모바일) 'week'로 시작, 크면(PC) 'month'로 시작!
+    let viewMode = window.innerWidth < 768 ? 'week' : 'month';
     const now = new Date();
     const TODAY_STR = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
@@ -361,7 +369,7 @@
         if (viewMode === 'month') {
             const y = currentDate.getFullYear(), m = currentDate.getMonth() + 1;
             document.getElementById('viewTitle').innerText = `${y}년 ${m}월`;
-            container.className = 'grid grid-cols-7 gap-1 md:gap-2';
+            container.className = 'grid grid-cols-7 gap-1 md:gap-2 min-w-[750px] md:min-w-full';
             const startDay = new Date(y, m-1, 1).getDay(), days = new Date(y, m, 0).getDate();
             for(let i=0; i<startDay; i++) container.innerHTML += '<div class="min-h-[80px] bg-gray-50/30 rounded-xl"></div>';
             for(let d=1; d<=days; d++) {
@@ -382,7 +390,7 @@
                 container.innerHTML += dayDiv + `</div>`;
             }
         } else {
-            container.className = 'flex flex-col gap-3';
+            container.className = 'flex flex-col gap-3 min-w-0 w-full';
             const start = new Date(currentDate); start.setDate(currentDate.getDate() - currentDate.getDay());
             document.getElementById('viewTitle').innerText = `주간 일정`;
             for(let i=0; i<7; i++) {
