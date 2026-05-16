@@ -333,35 +333,54 @@
         const gameDateTime = new Date(`${m.date}T${m.time}:00`);
         const hasStarted = new Date() >= gameDateTime;
 
-        let centerDisplay = `<span class="text-gray-300 font-normal mx-0.5 text-[0.48rem] md:text-xs">vs</span>`;
-        if (isUchwi) {
-            centerDisplay = `<span class="bg-red-50 text-red-600 px-0.5 rounded-sm font-black text-[0.45rem] md:text-[0.6rem] border border-red-200 mx-0.5">취소</span>`;
-        } else if (hasStarted && m.home_score !== null && m.home_score !== undefined) {
-            centerDisplay = `<span class="font-black mx-0.5 text-gray-700 text-[0.6rem] md:text-xs tracking-tighter">
-                <span class="${homeWin ? 'text-blue-600' : ''}">${m.home_score}</span>:<span class="${awayWin ? 'text-blue-600' : ''}">${m.away_score}</span>
-            </span>`;
+        const teamStyle = (isWin) => isWin ? "font-black text-blue-600" : "font-bold text-gray-700";
+
+        if (mode === 'week') {
+            // 🌟 [주간 뷰] 모바일 화면 전체를 쾌적하고 넓게 사용!
+            let centerDisplay = `<span class="text-gray-300 font-normal mx-3 text-sm">vs</span>`;
+            if (isUchwi) {
+                centerDisplay = `<span class="bg-red-50 text-red-600 px-2 py-0.5 rounded font-black text-xs border border-red-200 mx-3">취소</span>`;
+            } else if (hasStarted && m.home_score !== null && m.home_score !== undefined) {
+                centerDisplay = `<span class="font-black mx-4 text-gray-800 text-xl tracking-tighter">
+                    <span class="${homeWin ? 'text-blue-600' : ''}">${m.home_score}</span> : <span class="${awayWin ? 'text-blue-600' : ''}">${m.away_score}</span>
+                </span>`;
+            }
+
+            return `
+            <div onclick="openDetail('${m.date}', '${m.home}', '${m.away}')" class="cursor-pointer bg-gray-50 border border-gray-100 rounded-xl p-3 md:p-4 mb-2 shadow-sm hover:border-blue-400 transition-all flex flex-col justify-center items-center">
+                <div class="flex justify-between items-center w-full max-w-xs mx-auto text-base md:text-lg">
+                    <div class="text-right ${teamStyle(homeWin)} flex-1">${m.home}</div>
+                    ${centerDisplay}
+                    <div class="text-left ${teamStyle(awayWin)} flex-1">${m.away}</div>
+                </div>
+                <div class="text-[0.7rem] text-gray-500 mt-2 text-center font-medium bg-white px-2 py-0.5 rounded-full border border-gray-100">
+                    📍 ${m.stadium} | ${m.time}
+                </div>
+            </div>`;
+        } else {
+            // 🌟 [월간 뷰] 가로 스크롤 방지를 위해 극단적 다이어트! (여백 최소화)
+            let centerDisplay = `<span class="text-gray-300 font-light mx-[1px] md:mx-1 text-[0.45rem] md:text-xs">vs</span>`;
+            if (isUchwi) {
+                centerDisplay = `<span class="bg-red-50 text-red-600 px-[2px] rounded-sm font-black text-[0.4rem] md:text-[0.6rem] border border-red-200 mx-[1px]">취소</span>`;
+            } else if (hasStarted && m.home_score !== null && m.home_score !== undefined) {
+                centerDisplay = `<span class="font-black mx-[2px] md:mx-1.5 text-gray-800 text-[0.55rem] md:text-xs tracking-tighter">
+                    <span class="${homeWin ? 'text-blue-600' : ''}">${m.home_score}</span>:<span class="${awayWin ? 'text-blue-600' : ''}">${m.away_score}</span>
+                </span>`;
+            }
+
+            // 여백(padding)을 p-[2px] 수준으로 줄여서 7일이 한 화면에 딱 맞게 합니다.
+            return `
+            <div onclick="openDetail('${m.date}', '${m.home}', '${m.away}')" class="cursor-pointer bg-white border border-gray-100 rounded md:rounded-lg p-[2px] md:p-2 mb-[3px] shadow-sm hover:border-blue-400 transition-all">
+                <div class="flex justify-center items-center w-full text-[0.55rem] md:text-xs tracking-tighter">
+                    <div class="text-right ${teamStyle(homeWin)} leading-none">${m.home}</div>
+                    ${centerDisplay}
+                    <div class="text-left ${teamStyle(awayWin)} leading-none">${m.away}</div>
+                </div>
+                <div class="text-[0.4rem] md:text-[0.5rem] text-gray-400 mt-[2px] md:mt-1 text-center font-medium truncate leading-none">
+                    ${m.stadium} ${m.time}
+                </div>
+            </div>`;
         }
-
-        const teamStyle = (isWin) => isWin ? "font-black text-blue-600" : "font-bold text-gray-600";
-
-        // 💡 옵션 1: 글자 크기를 초소형으로 줄이고 자투리 여백을 완전히 없앰
-        return `
-        <div onclick="openDetail('${m.date}', '${m.home}', '${m.away}')" class="cursor-pointer bg-white border border-gray-100 rounded p-1 mb-1 shadow-sm hover:border-blue-400 transition-all">
-            <div class="flex justify-center items-center w-full text-[0.52rem] md:text-xs tracking-tighter leading-none">
-                <div class="text-right ${teamStyle(homeWin)} flex items-center justify-end gap-x-0.5">
-                    <span class="text-[0.45rem] md:text-[0.55rem] text-gray-300 font-normal shrink-0">(홈)</span>
-                    <span>${m.home}</span>
-                </div>
-                ${centerDisplay}
-                <div class="text-left ${teamStyle(awayWin)} flex items-center justify-start gap-x-0.5">
-                    <span>${m.away}</span>
-                    <span class="text-[0.45rem] md:text-[0.55rem] text-gray-300 font-normal shrink-0">(원)</span>
-                </div>
-            </div>
-            <div class="text-[0.42rem] md:text-[0.5rem] text-gray-400 mt-0.5 text-center font-medium leading-none whitespace-nowrap">
-                ${m.stadium} ${m.time}
-            </div>
-        </div>`;
     }
 
     async function renderView() {
@@ -373,7 +392,10 @@
         if (viewMode === 'month') {
             const y = currentDate.getFullYear(), m = currentDate.getMonth() + 1;
             document.getElementById('viewTitle').innerText = `${y}년 ${m}월`;
-            container.className = 'grid grid-cols-7 gap-1 md:gap-2 min-w-[750px] md:min-w-full';
+            
+            // 💡 월간뷰 컨테이너: 그리드 간격(gap)을 0.5로 확 줄입니다!
+            container.className = 'grid grid-cols-7 gap-0.5 md:gap-2'; 
+            
             const startDay = new Date(y, m-1, 1).getDay(), days = new Date(y, m, 0).getDate();
             for(let i=0; i<startDay; i++) container.innerHTML += '<div class="min-h-[80px] bg-gray-50/30 rounded-xl"></div>';
             for(let d=1; d<=days; d++) {
@@ -383,18 +405,19 @@
                 const holiday = matches.length > 0 ? matches[0].holiday_name : null;
                 const isSun = new Date(y, m-1, d).getDay() === 0;
 
+                // 💡 날짜 박스 내부 여백(padding)도 줄여서 가용 면적 최대화
                 let dayDiv = `
-                    <div class="bg-white/40 p-1 min-h-[110px] rounded-xl border border-transparent flex flex-col ${isToday ? 'today-highlight' : ''}">
-                        <div class="flex justify-between items-start mb-1.5 p-1">
-                            <span class="text-xs font-black ${isSun || holiday ? 'text-red-500' : 'text-gray-800'}">${d}</span>
-                            ${holiday ? `<span class="text-[0.5rem] font-bold text-red-400 truncate max-w-[45px]">${holiday}</span>` : ''}
+                    <div class="bg-white/40 p-0.5 md:p-1 min-h-[90px] md:min-h-[110px] rounded-lg border border-transparent flex flex-col ${isToday ? 'today-highlight' : ''}">
+                        <div class="flex justify-between items-start mb-1 px-0.5">
+                            <span class="text-[0.65rem] md:text-xs font-black ${isSun || holiday ? 'text-red-500' : 'text-gray-800'}">${d}</span>
+                            ${holiday ? `<span class="text-[0.45rem] font-bold text-red-400 truncate max-w-[40px]">${holiday}</span>` : ''}
                         </div>`;
                 if (matches.length > 0) matches.forEach(mt => dayDiv += getMatchHTML(mt, 'month'));
-                else dayDiv += `<div class="flex-1 flex items-center justify-center text-[0.6rem] text-gray-300 font-bold italic">경기 없는 날</div>`;
+                else dayDiv += `<div class="flex-1 flex items-center justify-center text-[0.55rem] text-gray-300 font-bold italic">경기 없음</div>`;
                 container.innerHTML += dayDiv + `</div>`;
             }
         } else {
-            container.className = 'flex flex-col gap-3 min-w-0 w-full';
+            container.className = 'flex flex-col gap-3';
             const start = new Date(currentDate); start.setDate(currentDate.getDate() - currentDate.getDay());
             document.getElementById('viewTitle').innerText = `주간 일정`;
             for(let i=0; i<7; i++) {
@@ -403,9 +426,11 @@
                 const isToday = ds === TODAY_STR;
                 const matches = allMatches.filter(mt => mt.date === ds && (filter === '전체' || mt.home === filter || mt.away === filter));
                 const holiday = matches.length > 0 ? matches[0].holiday_name : null;
-                let dayDiv = `<div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 ${isToday ? 'today-highlight' : ''}"><div class="flex items-center gap-2 mb-3"><span class="font-black text-sm ${d.getDay() === 0 || holiday ? 'text-red-500' : 'text-gray-800'}">${ds}</span>${holiday ? `<span class="bg-red-50 text-red-500 text-[10px] px-2 py-0.5 rounded-full font-bold">${holiday}</span>` : ''}</div><div class="grid grid-cols-1 md:grid-cols-2 gap-2">`;
+                
+                // 💡 주간뷰: 모바일에서도 1열(grid-cols-1)로 넓게 배치하여 공간 활용
+                let dayDiv = `<div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 ${isToday ? 'today-highlight' : ''}"><div class="flex items-center gap-2 mb-3"><span class="font-black text-sm ${d.getDay() === 0 || holiday ? 'text-red-500' : 'text-gray-800'}">${ds}</span>${holiday ? `<span class="bg-red-50 text-red-500 text-[10px] px-2 py-0.5 rounded-full font-bold">${holiday}</span>` : ''}</div><div class="grid grid-cols-1 md:grid-cols-2 gap-3">`;
                 if (matches.length > 0) matches.forEach(mt => dayDiv += getMatchHTML(mt, 'week'));
-                else dayDiv += `<div class="col-span-full py-4 text-center text-xs text-gray-300 font-bold italic">오늘은 경기가 없습니다.</div>`;
+                else dayDiv += `<div class="col-span-full py-6 text-center text-sm text-gray-300 font-bold italic">오늘은 경기가 없습니다.</div>`;
                 container.innerHTML += dayDiv + `</div></div>`;
             }
         }
