@@ -358,26 +358,25 @@
                 </div>
             </div>`;
         } else {
-            // 🌟 [월간 뷰] 극강의 공간 활용: 말줄임표(truncate) 제거, 마진 완전 삭제!
-            let centerDisplay = `<span class="text-gray-300 font-light px-[1px] md:px-1 text-[0.45rem] md:text-xs">vs</span>`;
+            // 🌟 [월간 뷰] 브라우저 폰트 제한 강제 돌파 (scale & shrink-0)
+            let centerDisplay = `<span class="text-gray-400 font-light px-[1px] text-[10px] shrink-0">vs</span>`;
             if (isUchwi) {
-                centerDisplay = `<span class="bg-red-50 text-red-600 px-[1px] rounded-sm font-black text-[0.4rem] md:text-[0.6rem] border border-red-200 mx-[1px]">취소</span>`;
+                centerDisplay = `<span class="bg-red-50 text-red-600 px-[2px] rounded-sm font-black text-[9px] border border-red-200 mx-[1px] shrink-0">취소</span>`;
             } else if (hasStarted && m.home_score !== null && m.home_score !== undefined) {
-                // 콜론(:) 주변 여백을 완전히 없애고 텍스트를 밀착시킵니다.
-                centerDisplay = `<span class="font-black px-[1px] md:px-1.5 text-gray-800 text-[0.5rem] md:text-xs tracking-tighter">
+                centerDisplay = `<span class="font-black px-[1px] text-gray-800 text-[11px] tracking-tighter shrink-0">
                     <span class="${homeWin ? 'text-blue-600' : ''}">${m.home_score}</span>:<span class="${awayWin ? 'text-blue-600' : ''}">${m.away_score}</span>
                 </span>`;
             }
 
-            // 💡 [핵심 방어] truncate를 빼버리고, div 대신 span을 써서 강제로 어깨동무를 시킵니다!
+            // 💡 [핵심 마법] w-[115%]로 내부 공간을 강제로 넓힌 뒤, scale-90으로 전체를 10% 축소시켜 박스 안에 욱여넣습니다!
             return `
-            <div onclick="openDetail('${m.date}', '${m.home}', '${m.away}')" class="cursor-pointer bg-white border border-gray-100 rounded md:rounded-lg p-[2px] md:p-2 mb-[2px] shadow-sm hover:border-blue-400 transition-all overflow-hidden">
-                <div class="flex justify-center items-center w-full text-[0.5rem] md:text-xs tracking-tighter whitespace-nowrap">
-                    <span class="${teamStyle(homeWin)} leading-none">${m.home}</span>
+            <div onclick="openDetail('${m.date}', '${m.home}', '${m.away}')" class="cursor-pointer bg-white border border-gray-100 rounded p-[1px] mb-[2px] shadow-sm hover:border-blue-400 transition-all flex flex-col items-center justify-center overflow-hidden">
+                <div class="flex justify-center items-center w-[115%] transform scale-90 origin-center whitespace-nowrap">
+                    <span class="${teamStyle(homeWin)} leading-none shrink-0 text-[10px]">${m.home}</span>
                     ${centerDisplay}
-                    <span class="${teamStyle(awayWin)} leading-none">${m.away}</span>
+                    <span class="${teamStyle(awayWin)} leading-none shrink-0 text-[10px]">${m.away}</span>
                 </div>
-                <div class="text-[0.4rem] md:text-[0.5rem] text-gray-400 mt-[2px] md:mt-1 text-center font-medium truncate leading-none">
+                <div class="text-[8px] text-gray-400 mt-[1px] text-center font-medium leading-none shrink-0 transform scale-90 origin-center tracking-tighter">
                     ${m.stadium} ${m.time}
                 </div>
             </div>`;
