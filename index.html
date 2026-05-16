@@ -347,14 +347,14 @@
             }
 
             return `
-            <div onclick="openDetail('${m.date}', '${m.home}', '${m.away}')" class="cursor-pointer bg-gray-50 border border-gray-100 rounded-xl p-3 md:p-4 mb-2 shadow-sm hover:border-blue-400 transition-all flex flex-col justify-center items-center">
-                <div class="flex justify-between items-center w-full max-w-xs mx-auto text-base md:text-lg">
-                    <div class="text-right ${teamStyle(homeWin)} flex-1">${m.home}</div>
+            <div onclick="openDetail('${m.date}', '${m.home}', '${m.away}')" class="cursor-pointer bg-white border border-gray-100 rounded md:rounded-lg p-[2px] md:p-2 mb-[2px] shadow-sm hover:border-blue-400 transition-all overflow-hidden">
+                <div class="flex justify-center items-center w-full text-[0.5rem] md:text-[0.6rem] tracking-tighter whitespace-nowrap">
+                    <div class="text-right ${teamStyle(homeWin)} leading-none">${m.home}</div>
                     ${centerDisplay}
-                    <div class="text-left ${teamStyle(awayWin)} flex-1">${m.away}</div>
+                    <div class="text-left ${teamStyle(awayWin)} leading-none">${m.away}</div>
                 </div>
-                <div class="text-[0.7rem] text-gray-500 mt-2 text-center font-medium bg-white px-2 py-0.5 rounded-full border border-gray-100">
-                    📍 ${m.stadium} | ${m.time}
+                <div class="text-[0.45rem] md:text-[0.5rem] text-gray-400 mt-[2px] md:mt-1 text-center font-medium leading-none overflow-hidden">
+                    ${m.stadium} ${m.time}
                 </div>
             </div>`;
         } else {
