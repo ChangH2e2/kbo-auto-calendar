@@ -333,30 +333,34 @@
         const gameDateTime = new Date(`${m.date}T${m.time}:00`);
         const hasStarted = new Date() >= gameDateTime;
 
-        let centerDisplay = `<span class="text-gray-300 font-normal mx-1">vs</span>`;
+        let centerDisplay = `<span class="text-gray-300 font-normal mx-0.5 text-[0.48rem] md:text-xs">vs</span>`;
         if (isUchwi) {
-            centerDisplay = `<span class="bg-red-50 text-red-600 px-1.5 rounded-md font-black text-[0.6rem] border border-red-200 mx-1">우천취소</span>`;
+            centerDisplay = `<span class="bg-red-50 text-red-600 px-0.5 rounded-sm font-black text-[0.45rem] md:text-[0.6rem] border border-red-200 mx-0.5">취소</span>`;
         } else if (hasStarted && m.home_score !== null && m.home_score !== undefined) {
-            // 시간이 지난 경기만 진짜 점수 노출
-            centerDisplay = `<span class="font-black mx-1.5 text-gray-700">
+            centerDisplay = `<span class="font-black mx-0.5 text-gray-700 text-[0.6rem] md:text-xs tracking-tighter">
                 <span class="${homeWin ? 'text-blue-600' : ''}">${m.home_score}</span>:<span class="${awayWin ? 'text-blue-600' : ''}">${m.away_score}</span>
             </span>`;
         }
 
-        const teamStyle = (isWin) => isWin ? "font-black text-blue-600 scale-105" : "font-medium text-gray-500";
+        const teamStyle = (isWin) => isWin ? "font-black text-blue-600" : "font-bold text-gray-600";
 
+        // 💡 옵션 1: 글자 크기를 초소형으로 줄이고 자투리 여백을 완전히 없앰
         return `
-        <div onclick="openDetail('${m.date}', '${m.home}', '${m.away}')" class="cursor-pointer bg-white border border-gray-100 rounded-lg p-2 mb-1.5 shadow-sm hover:border-blue-400 transition-all">
-            <div class="flex justify-between items-center w-full text-[0.65rem] md:text-xs">
-                <div class="flex-1 text-right ${teamStyle(homeWin)} truncate">
-                    <span class="text-[0.55rem] text-gray-300 mr-0.5 font-normal">(홈)</span>${m.home}
+        <div onclick="openDetail('${m.date}', '${m.home}', '${m.away}')" class="cursor-pointer bg-white border border-gray-100 rounded p-1 mb-1 shadow-sm hover:border-blue-400 transition-all">
+            <div class="flex justify-center items-center w-full text-[0.52rem] md:text-xs tracking-tighter leading-none">
+                <div class="text-right ${teamStyle(homeWin)} flex items-center justify-end gap-x-0.5">
+                    <span class="text-[0.45rem] md:text-[0.55rem] text-gray-300 font-normal shrink-0">(홈)</span>
+                    <span>${m.home}</span>
                 </div>
                 ${centerDisplay}
-                <div class="flex-1 text-left ${teamStyle(awayWin)} truncate">
-                    ${m.away}<span class="text-[0.55rem] text-gray-300 ml-0.5 font-normal">(원)</span>
+                <div class="text-left ${teamStyle(awayWin)} flex items-center justify-start gap-x-0.5">
+                    <span>${m.away}</span>
+                    <span class="text-[0.45rem] md:text-[0.55rem] text-gray-300 font-normal shrink-0">(원)</span>
                 </div>
             </div>
-            <div class="text-[0.45rem] md:text-[0.5rem] text-gray-400 mt-1.5 text-center font-medium">📍 ${m.stadium} | ${m.time}</div>
+            <div class="text-[0.42rem] md:text-[0.5rem] text-gray-400 mt-0.5 text-center font-medium leading-none whitespace-nowrap">
+                ${m.stadium} ${m.time}
+            </div>
         </div>`;
     }
 
