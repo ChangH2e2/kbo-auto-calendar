@@ -65,16 +65,16 @@
     
     // 👇 여기부터 추가! [구단별 예매 정책 데이터]
     const TEAM_RULES = {
-        "두산": { vendor: "인터파크", url: "https://mobileticket.interpark.com/sports/goods/G0000063", daysBefore: 7, openTime: 11 },
-        "LG": { vendor: "티켓링크", url: "https://m.ticketlink.co.kr/sports/baseball/64", daysBefore: 7, openTime: 11 },
-        "키움": { vendor: "인터파크", url: "https://mobileticket.interpark.com/sports/goods/G0000065", daysBefore: 7, openTime: 11 },
-        "SSG": { vendor: "티켓링크", url: "https://m.ticketlink.co.kr/sports/baseball/466", daysBefore: 7, openTime: 11 },
-        "NC": { vendor: "NC/티켓링크", url: "https://m.ticketlink.co.kr/sports/baseball/52", daysBefore: 7, openTime: 11 },
-        "삼성": { vendor: "삼성/티켓링크", url: "https://m.ticketlink.co.kr/sports/baseball/57", daysBefore: 7, openTime: 11 },
-        "롯데": { vendor: "롯데 앱/웹", url: "https://www.giantsclub.com/html/?pcode=297", daysBefore: 7, openTime: 10 },
-        "KIA": { vendor: "티켓링크", url: "https://m.ticketlink.co.kr/sports/baseball/58", daysBefore: 7, openTime: 11 },
-        "KT": { vendor: "kt/티켓링크", url: "https://m.ticketlink.co.kr/sports/baseball/62", daysBefore: 7, openTime: 11 },
-        "한화": { vendor: "이글콕/티켓링크", url: "https://m.ticketlink.co.kr/sports/baseball/60", daysBefore: 7, openTime: 11 }
+        "LG": { vendor: "티켓링크", url: "https://www.ticketlink.co.kr/sports/baseball/64", daysBefore: 7, openTime: 11, presale: "연간회원 1시간 전(10:00)" },
+        "두산": { vendor: "인터파크", url: "https://ticket.interpark.com/Contents/Sports/GoodsInfo?SportsCode=07001&TeamCode=PB004", daysBefore: 7, openTime: 11, presale: "베어스클럽 1시간 전(10:00)" },
+        "키움": { vendor: "인터파크", url: "https://ticket.interpark.com/Contents/Sports/GoodsInfo?SportsCode=07001&TeamCode=PB003", daysBefore: 7, openTime: 14, presale: "멤버십 2시간 전(12:00)" },
+        "KT": { vendor: "티켓링크", url: "https://www.ticketlink.co.kr/sports/baseball/62", daysBefore: 7, openTime: 14, presale: "선행예매권 8일 전" },
+        "KIA": { vendor: "티켓링크", url: "https://www.ticketlink.co.kr/sports/baseball/58", daysBefore: 7, openTime: 11, presale: "얼리패스 8일 전 11:00" },
+        "삼성": { vendor: "티켓링크", url: "https://www.ticketlink.co.kr/sports/baseball/57", daysBefore: 7, openTime: 11, presale: "블루멤버십 8일 전 11:00" },
+        "한화": { vendor: "티켓링크", url: "https://www.ticketlink.co.kr/sports/baseball/60", daysBefore: 7, openTime: 11, presale: "선예매권 8일 전 11:00" },
+        "NC": { vendor: "NC 자체 앱", url: "https://ticket.ncdinos.com/", daysBefore: 7, openTime: 11, presale: "멤버십 8일 전 11:00" },
+        "롯데": { vendor: "롯데 자체 앱", url: "https://ticket.giantsclub.com/", daysBefore: 7, openTime: 14, presale: "골드회원 4시간 전(10:00)" },
+        "SSG": { vendor: "SSG.COM", url: "https://www.ssglanders.com/ticket/reservation", daysBefore: 7, openTime: 11, presale: "멤버십 10일~8일 전 11:00" }
     };
 
     let allMatches = [], currentDate = new Date();
