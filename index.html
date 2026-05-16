@@ -74,7 +74,7 @@
         "한화": { vendor: "티켓링크", url: "https://www.ticketlink.co.kr/sports/baseball/60", daysBefore: 7, openTime: 11, presale: "선예매권 8일 전 11:00" },
         "NC": { vendor: "NC 자체 앱", url: "https://ticket.ncdinos.com/", daysBefore: 7, openTime: 11, presale: "멤버십 8일 전 11:00" },
         "롯데": { vendor: "롯데 자체 앱", url: "https://ticket.giantsclub.com/", daysBefore: 7, openTime: 14, presale: "골드회원 4시간 전(10:00)" },
-        "SSG": { vendor: "SSG.COM", url: "https://www.ssglanders.com/ticket/reservation", daysBefore: 7, openTime: 11, presale: "멤버십 10일~8일 전 11:00" }
+        "SSG": { vendor: "SSG.COM", url: "https://ticket.ssg.com/ticket", daysBefore: 7, openTime: 11, presale: "멤버십 10일~8일 전 11:00" }
     };
 
     let allMatches = [], currentDate = new Date();
@@ -358,25 +358,25 @@
                 </div>
             </div>`;
         } else {
-            // 🌟 [월간 뷰] 브라우저 폰트 제한 강제 돌파 (scale & shrink-0)
-            let centerDisplay = `<span class="text-gray-400 font-light px-[1px] text-[10px] shrink-0">vs</span>`;
+            // 🌟 [월간 뷰] 뇌절 코드 삭제! 가장 예뻤던 비율로 롤백 + 텍스트 잘림 방지
+            let centerDisplay = `<span class="text-gray-300 font-light mx-0.5 text-[10px]">vs</span>`;
             if (isUchwi) {
-                centerDisplay = `<span class="bg-red-50 text-red-600 px-[2px] rounded-sm font-black text-[9px] border border-red-200 mx-[1px] shrink-0">취소</span>`;
+                centerDisplay = `<span class="bg-red-50 text-red-600 px-1 rounded-[2px] font-black text-[9px] border border-red-200 mx-0.5">취소</span>`;
             } else if (hasStarted && m.home_score !== null && m.home_score !== undefined) {
-                centerDisplay = `<span class="font-black px-[1px] text-gray-800 text-[11px] tracking-tighter shrink-0">
+                centerDisplay = `<span class="font-black mx-0.5 text-gray-800 text-[11px] tracking-tighter">
                     <span class="${homeWin ? 'text-blue-600' : ''}">${m.home_score}</span>:<span class="${awayWin ? 'text-blue-600' : ''}">${m.away_score}</span>
                 </span>`;
             }
 
-            // 💡 [핵심 마법] w-[115%]로 내부 공간을 강제로 넓힌 뒤, scale-90으로 전체를 10% 축소시켜 박스 안에 욱여넣습니다!
+            // 💡 scale, w-115% 꼼수 싹 제거. p-1 여백으로 숨통을 틔워주고 whitespace-nowrap으로 한 줄 유지!
             return `
-            <div onclick="openDetail('${m.date}', '${m.home}', '${m.away}')" class="cursor-pointer bg-white border border-gray-100 rounded p-[1px] mb-[2px] shadow-sm hover:border-blue-400 transition-all flex flex-col items-center justify-center overflow-hidden">
-                <div class="flex justify-center items-center w-[115%] transform scale-90 origin-center whitespace-nowrap">
-                    <span class="${teamStyle(homeWin)} leading-none shrink-0 text-[10px]">${m.home}</span>
+            <div onclick="openDetail('${m.date}', '${m.home}', '${m.away}')" class="cursor-pointer bg-white border border-gray-100 rounded p-1 mb-1 shadow-sm hover:border-blue-400 transition-all flex flex-col items-center justify-center">
+                <div class="flex justify-center items-center w-full whitespace-nowrap">
+                    <span class="${teamStyle(homeWin)} text-[10px] leading-none">${m.home}</span>
                     ${centerDisplay}
-                    <span class="${teamStyle(awayWin)} leading-none shrink-0 text-[10px]">${m.away}</span>
+                    <span class="${teamStyle(awayWin)} text-[10px] leading-none">${m.away}</span>
                 </div>
-                <div class="text-[8px] text-gray-400 mt-[1px] text-center font-medium leading-none shrink-0 transform scale-90 origin-center tracking-tighter">
+                <div class="text-[8px] text-gray-400 mt-1 text-center font-medium leading-none tracking-tighter">
                     ${m.stadium} ${m.time}
                 </div>
             </div>`;
