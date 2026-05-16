@@ -358,24 +358,24 @@
                 </div>
             </div>`;
         } else {
-            // 🌟 [월간 뷰] 가로 스크롤 방지를 위해 극단적 다이어트! (여백 최소화 & 글자 축소)
-            let centerDisplay = `<span class="text-gray-300 font-light mx-[1px] md:mx-1 text-[0.45rem] md:text-xs">vs</span>`;
+            // 🌟 [월간 뷰] 극강의 공간 활용: 말줄임표(truncate) 제거, 마진 완전 삭제!
+            let centerDisplay = `<span class="text-gray-300 font-light px-[1px] md:px-1 text-[0.45rem] md:text-xs">vs</span>`;
             if (isUchwi) {
-                centerDisplay = `<span class="bg-red-50 text-red-600 px-[2px] rounded-sm font-black text-[0.4rem] md:text-[0.6rem] border border-red-200 mx-[1px]">취소</span>`;
+                centerDisplay = `<span class="bg-red-50 text-red-600 px-[1px] rounded-sm font-black text-[0.4rem] md:text-[0.6rem] border border-red-200 mx-[1px]">취소</span>`;
             } else if (hasStarted && m.home_score !== null && m.home_score !== undefined) {
-                // 💡 점수 텍스트 크기를 text-[0.5rem]으로 더 줄였습니다.
-                centerDisplay = `<span class="font-black mx-[1px] md:mx-1.5 text-gray-800 text-[0.5rem] md:text-xs tracking-tighter">
+                // 콜론(:) 주변 여백을 완전히 없애고 텍스트를 밀착시킵니다.
+                centerDisplay = `<span class="font-black px-[1px] md:px-1.5 text-gray-800 text-[0.5rem] md:text-xs tracking-tighter">
                     <span class="${homeWin ? 'text-blue-600' : ''}">${m.home_score}</span>:<span class="${awayWin ? 'text-blue-600' : ''}">${m.away_score}</span>
                 </span>`;
             }
 
-            // 💡 [핵심 방어] overflow-hidden 과 whitespace-nowrap 추가!
+            // 💡 [핵심 방어] truncate를 빼버리고, div 대신 span을 써서 강제로 어깨동무를 시킵니다!
             return `
             <div onclick="openDetail('${m.date}', '${m.home}', '${m.away}')" class="cursor-pointer bg-white border border-gray-100 rounded md:rounded-lg p-[2px] md:p-2 mb-[2px] shadow-sm hover:border-blue-400 transition-all overflow-hidden">
                 <div class="flex justify-center items-center w-full text-[0.5rem] md:text-xs tracking-tighter whitespace-nowrap">
-                    <div class="text-right ${teamStyle(homeWin)} leading-none truncate">${m.home}</div>
+                    <span class="${teamStyle(homeWin)} leading-none">${m.home}</span>
                     ${centerDisplay}
-                    <div class="text-left ${teamStyle(awayWin)} leading-none truncate">${m.away}</div>
+                    <span class="${teamStyle(awayWin)} leading-none">${m.away}</span>
                 </div>
                 <div class="text-[0.4rem] md:text-[0.5rem] text-gray-400 mt-[2px] md:mt-1 text-center font-medium truncate leading-none">
                     ${m.stadium} ${m.time}
