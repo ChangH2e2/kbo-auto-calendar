@@ -144,11 +144,15 @@ function getGameState(game) {
   if (game.status === "live") return "live";
   if (game.status === "final") return "final";
   const hasScore = game.home_score !== null && game.home_score !== undefined && game.away_score !== null && game.away_score !== undefined;
-  if (!hasScore) return "scheduled";
   const startedAt = parseGameDate(game);
   const elapsed = Date.now() - startedAt.getTime();
   if (toISODate(startedAt) === toISODate(today) && elapsed >= 0 && elapsed < 5 * 60 * 60 * 1000) return "live";
+  if (!hasScore) return "scheduled";
   return "final";
+}
+
+function shouldShowTicket(game, status = getGameState(game)) {
+  return status === "scheduled" && parseGameDate(game).getTime() > Date.now();
 }
 
 function getStatusText(game) {
@@ -542,7 +546,7 @@ function renderNextGame() {
         </div>
       </div>
       <div class="game-meta"><strong>${escapeHtml(game.stadium)}</strong>${game.broadcast ? ` / ${escapeHtml(game.broadcast)}` : ""}</div>
-      ${ticketPanelHtml(game, ticket)}
+      ${shouldShowTicket(game) ? ticketPanelHtml(game, ticket) : ""}
     </article>`;
   updateCountdowns();
 }
