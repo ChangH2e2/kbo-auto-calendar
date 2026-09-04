@@ -66,6 +66,10 @@ def should_collect_details(game_date, today=None):
     age_days = (today - datetime.date.fromisoformat(game_date)).days
     return 0 <= age_days <= DETAIL_WINDOW_DAYS
 
+def fallback_game_id(game_date, away_team, home_team):
+    """KBO가 ID를 주지 않는 취소 행도 일정에서 식별할 수 있게 한다."""
+    return f"{game_date.replace('-', '')}-{away_team}-{home_team}-noid"
+
 def get_line_score(game_id):
     """경기 상세 이닝 점수 및 RHEB 수집 (table2, table3 파싱)"""
     try:
@@ -223,6 +227,7 @@ def get_kbo_data():
                 if len(spans) >= 2:
                     away_team, home_team = spans[0].get_text(strip=True), spans[-1].get_text(strip=True)
                     if away_team not in VALID_TEAMS or home_team not in VALID_TEAMS: continue
+                    resolved_game_id = game_id or fallback_game_id(full_date, away_team, home_team)
                     
                     # 💡 [중요] 변수 초기화 위치: 매 경기마다 새로 초기화해야 데이터가 안 꼬입니다.
                     h_score, a_score = None, None
@@ -256,7 +261,7 @@ def get_kbo_data():
                         "away_score": a_score, 
                         "stadium": stadium_name,
                         "time": game_time,
-                        "game_id": game_id,
+                        "game_id": resolved_game_id,
                         "home_line": h_line, 
                         "away_line": a_line, 
                         "home_rheb": h_rheb, 

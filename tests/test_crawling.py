@@ -35,6 +35,9 @@ class CrawlingTests(unittest.TestCase):
             self.assertFalse(crawling.should_collect_details("2026-08-20", today))
             self.assertFalse(crawling.should_collect_details("2026-09-05", today))
 
+    def test_fallback_id_keeps_cancelled_rows_without_source_id(self):
+        self.assertEqual(crawling.fallback_game_id("2026-08-30", "LG", "롯데"), "20260830-LG-롯데-noid")
+
     def test_line_score_maps_away_and_home_rows(self):
         payload = {
             "table2": json.dumps({"rows": [
