@@ -240,6 +240,8 @@ def get_kbo_data():
 
 if __name__ == "__main__":
     data = get_kbo_data()
+    if not data:
+        raise SystemExit("KBO 원본 응답에서 경기 데이터를 찾지 못했습니다. 수집 endpoint 응답을 확인하세요.")
     ingest_url = os.environ.get("KBO_INGEST_URL", "").strip().rstrip("/")
     ingest_token = os.environ.get("KBO_INGEST_TOKEN", "").strip()
     if data and ingest_url:
