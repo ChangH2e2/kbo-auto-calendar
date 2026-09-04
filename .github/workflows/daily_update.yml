@@ -4,9 +4,14 @@ on:
     - cron: '0 21 * * *' # 한국 시간 매일 새벽 6시 실행
   workflow_dispatch: 
 
+concurrency:
+  group: kbo-daily-ingest
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python
