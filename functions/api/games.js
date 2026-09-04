@@ -1,5 +1,14 @@
 const ALLOWED_STATUSES = new Set(["scheduled", "ticket_soon", "ticket_open", "live", "final", "cancelled", "postponed"]);
 
+export function latestGameDataTimestamp(games = []) {
+  const timestamps = games
+    .map((game) => game.source_updated_at || game.ingested_at)
+    .filter(Boolean)
+    .map((value) => new Date(value).getTime())
+    .filter((value) => Number.isFinite(value));
+  return timestamps.length ? new Date(Math.max(...timestamps)).toISOString() : null;
+}
+
 export async function onRequestGet(context) {
   const url = new URL(context.request.url);
   const from = /^\d{4}-\d{2}-\d{2}$/.test(url.searchParams.get("from") || "") ? url.searchParams.get("from") : "0000-01-01";
@@ -17,7 +26,8 @@ export async function onRequestGet(context) {
     WHERE ${where} ORDER BY starts_at ASC`;
   try {
     const result = await context.env.KBO_DB.prepare(query).bind(...params).all();
-    return Response.json({ games: result.results || [], data_updated_at: new Date().toISOString() }, {
+    const games = result.results || [];
+    return Response.json({ games, data_updated_at: latestGameDataTimestamp(games) }, {
       headers: { "Cache-Control": "public, max-age=30, s-maxage=60" }
     });
   } catch (error) {
