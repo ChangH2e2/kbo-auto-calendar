@@ -24,9 +24,11 @@ const TICKET_RULES = {
 
 const demoMode = new URLSearchParams(location.search).get("demo") === "1";
 const today = startOfDay(new Date());
+const storedFavoriteTeam = localStorage.getItem("kbo-favorite-team");
 const state = {
   games: [],
-  favoriteTeam: localStorage.getItem("kbo-favorite-team") || "LG",
+  favoriteTeam: storedFavoriteTeam || "LG",
+  hasStoredTeam: Boolean(storedFavoriteTeam),
   activeView: window.innerWidth >= 960 ? "schedule" : "today",
   cursorDate: new Date(today),
   selectedDate: toISODate(today),
@@ -54,6 +56,7 @@ const dom = {
   scheduleFreshness: document.getElementById("scheduleFreshness"),
   settingsFreshness: document.getElementById("settingsFreshness"),
   teamPicker: document.getElementById("teamPicker"),
+  firstVisitNotice: document.getElementById("firstVisitNotice"),
   dialog: document.getElementById("gameDialog"),
   dialogBody: document.getElementById("dialogBody")
 };
@@ -323,11 +326,13 @@ function renderFavoriteTeam() {
       <span class="team-dot" style="${teamStyle(team)}"></span>${escapeHtml(team)}
     </button>`).join("");
   dom.teamPicker.querySelectorAll("[data-team]").forEach((button) => button.addEventListener("click", () => setFavoriteTeam(button.dataset.team)));
+  dom.firstVisitNotice.hidden = state.hasStoredTeam;
 }
 
 function setFavoriteTeam(team) {
   if (!TEAMS.includes(team)) return;
   state.favoriteTeam = team;
+  state.hasStoredTeam = true;
   localStorage.setItem("kbo-favorite-team", team);
   renderAll();
 }
@@ -663,6 +668,7 @@ document.getElementById("mobileTeamButton").addEventListener("click", () => setA
 document.getElementById("resetPreferences").addEventListener("click", () => {
   localStorage.removeItem("kbo-favorite-team");
   state.favoriteTeam = "LG";
+  state.hasStoredTeam = false;
   renderAll();
 });
 document.getElementById("teamScopeFilter").addEventListener("click", (event) => {

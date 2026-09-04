@@ -1,0 +1,22 @@
+name: KBO-Detail-Refresh
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 */6 * * *'
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+      - run: pip install -r requirements.txt
+      - name: Refresh recent boxscores
+        env:
+          KBO_INGEST_URL: ${{ secrets.KBO_INGEST_URL }}
+          KBO_INGEST_TOKEN: ${{ secrets.KBO_INGEST_TOKEN }}
+          KBO_COLLECT_DETAILS: '1'
+          KBO_DETAIL_WINDOW_DAYS: '14'
+        run: python crawling.py

@@ -18,6 +18,7 @@ KBO_HEADERS = {
     "Accept": "application/json, text/javascript, */*; q=0.01",
 }
 COLLECT_DETAILS = os.environ.get("KBO_COLLECT_DETAILS", "0") == "1"
+DETAIL_WINDOW_DAYS = int(os.environ.get("KBO_DETAIL_WINDOW_DAYS", "14"))
 
 def get_holidays(year):
     """대체 공휴일을 포함한 공휴일 정보 수집"""
@@ -218,7 +219,7 @@ def get_kbo_data():
                                     a_score = int(a_score_val)
                                     h_score = int(h_score_val)
                                     if game_id:
-                                        if COLLECT_DETAILS:
+                                        if COLLECT_DETAILS and (datetime.date.today() - datetime.date.fromisoformat(full_date)).days <= DETAIL_WINDOW_DAYS:
                                             h_line, a_line, h_rheb, a_rheb = get_line_score(game_id)
                                             hitters, pitchers = get_boxscore_details(game_id)
                                             time.sleep(0.2)
