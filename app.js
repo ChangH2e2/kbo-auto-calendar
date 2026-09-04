@@ -227,11 +227,11 @@ function ticketDisclaimer(ticket) {
 function ticketStatusNote(ticket) {
   if (ticket.isOfficial && ticket.officialState !== "scheduled") return "공식 상태 확인됨";
   if (ticket.requiresLogin) return "로그인 후 상태 확인";
-  return ticket.isOpen ? "공식 예매처 확인 필요" : "계산 중";
+  return ticket.isOpen ? "예매처 상태 확인 필요" : "계산 중";
 }
 
 function ticketActionText(ticket) {
-  return ticket.requiresLogin ? "로그인 후 예매처 확인" : "공식 예매처에서 확인";
+  return ticket.requiresLogin ? "로그인 후 예매하러 가기" : "예매하러 가기";
 }
 
 function ticketPanelHtml(game, ticket, { compact = false } = {}) {
@@ -800,7 +800,7 @@ function updateCountdowns() {
   const update = () => {
     document.querySelectorAll("[data-countdown]").forEach((element) => {
       const diff = new Date(element.dataset.countdown).getTime() - Date.now();
-      if (diff <= 0) { element.textContent = element.dataset.countdownLogin === "true" ? "로그인 후 상태 확인" : "공식 예매처 확인 필요"; return; }
+      if (diff <= 0) { element.textContent = element.dataset.countdownLogin === "true" ? "로그인 후 상태 확인" : "예매처 상태 확인 필요"; return; }
       const days = Math.floor(diff / 86400000);
       const hours = Math.floor((diff % 86400000) / 3600000);
       const minutes = Math.floor((diff % 3600000) / 60000);
