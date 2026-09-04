@@ -13,15 +13,15 @@ const STADIUMS = {
 };
 const DEFAULT_TICKET_RULES = {
   LG: { vendor: "티켓링크", url: "https://ticketlink.co.kr/", daysBefore: 7, openTime: "11:00" },
-  두산: { vendor: "인터파크", url: "https://ticket.interpark.com/Contents/Sports/GoodsInfo?SportsCode=07001&TeamCode=PB004", daysBefore: 7, hour: 11 },
-  키움: { vendor: "인터파크", url: "https://ticket.interpark.com/Contents/Sports/GoodsInfo?SportsCode=07001&TeamCode=PB003", daysBefore: 7, hour: 14 },
+  두산: { vendor: "NOL 인터파크", url: "https://nol.yanolja.com/ticket/genre/sports/bears", daysBefore: 7, openTime: "11:00" },
+  키움: { vendor: "NOL 인터파크", url: "https://nol.yanolja.com/ticket/genre/sports/heroes", daysBefore: 7, openTime: "14:00" },
   KT: { vendor: "티켓링크", url: "https://ticketlink.co.kr/", daysBefore: 7, openTime: "14:00" },
   KIA: { vendor: "티켓링크", url: "https://ticketlink.co.kr/", daysBefore: 7, openTime: "11:00" },
   삼성: { vendor: "티켓링크", url: "https://ticketlink.co.kr/", daysBefore: 7, openTime: "11:00" },
   한화: { vendor: "티켓링크", url: "https://ticketlink.co.kr/", daysBefore: 7, openTime: "11:00" },
-  NC: { vendor: "NC 다이노스", url: "https://ticket.ncdinos.com/", daysBefore: 7, hour: 11 },
-  롯데: { vendor: "롯데 자이언츠", url: "https://ticket.giantsclub.com/", daysBefore: 7, hour: 14 },
-  SSG: { vendor: "SSG.COM", url: "https://ticket.ssg.com/ticket", daysBefore: 7, hour: 11 }
+  NC: { vendor: "NC 다이노스", url: "https://ticket.ncdinos.com/", daysBefore: 7, openTime: "11:00" },
+  롯데: { vendor: "롯데 자이언츠", url: "https://ticket.giantsclub.com/", daysBefore: 7, openTime: "14:00" },
+  SSG: { vendor: "SSG.COM", url: "https://ticket.ssg.com/ticket", daysBefore: 7, openTime: "11:00" }
 };
 
 const demoMode = new URLSearchParams(location.search).get("demo") === "1";
