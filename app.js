@@ -465,9 +465,13 @@ function renderIngestionStatus() {
   }
   const finished = run.finished_at ? new Date(run.finished_at) : null;
   const time = finished && !Number.isNaN(finished.getTime()) ? formatTime(finished) : "시간 미상";
-  dom.ingestionStatus.textContent = run.status === "success"
+  const isDelayed = finished && Date.now() - finished.getTime() > 30 * 60 * 1000;
+  dom.ingestionStatus.className = `source-status ${run.status === "success" && !isDelayed ? "is-healthy" : "is-warning"}`;
+  dom.ingestionStatus.textContent = run.status === "success" && !isDelayed
     ? `수집 정상 · ${time} · ${run.accepted_count}건 반영`
-    : `수집 실패 · ${time} · 이전 데이터 유지`;
+    : run.status === "success"
+      ? `수집 지연 · 마지막 성공 ${time} · 이전 데이터 유지`
+      : `수집 실패 · ${time} · 이전 데이터 유지`;
 }
 
 function freshnessText() {

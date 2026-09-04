@@ -263,6 +263,8 @@ button:active { transform: translateY(1px); }
 .source-card { display: grid; gap: 18px; }
 .source-status-group { display: grid; gap: 4px; }
 .source-status { color: var(--ink-soft); font-size: 13px; font-weight: 650; }
+.source-status.is-healthy { color: var(--accent); }
+.source-status.is-warning { color: var(--danger); }
 
 .mobile-bottom-nav {
   position: fixed;
