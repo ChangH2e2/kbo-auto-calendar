@@ -1,5 +1,6 @@
 const API_URL = "/api/games";
 const TICKET_POLICY_API_URL = "/api/ticket-policies";
+const DATA_STALE_AFTER_MS = 8 * 60 * 60 * 1000;
 
 const TEAMS = ["KIA", "KT", "LG", "NC", "SSG", "두산", "롯데", "삼성", "키움", "한화"];
 const TEAM_COLORS = {
@@ -313,11 +314,11 @@ async function fetchGames() {
 
 function renderNotice() {
   if (state.sourceState === "ready") {
-    const isStale = state.dataTimestamp && Date.now() - state.dataTimestamp.getTime() > 30 * 60 * 1000;
+    const isStale = state.dataTimestamp && Date.now() - state.dataTimestamp.getTime() > DATA_STALE_AFTER_MS;
     dom.notice.hidden = !isStale;
     if (isStale) {
       dom.notice.className = "data-notice error";
-      dom.notice.textContent = `데이터 갱신이 30분 이상 지연되고 있습니다. 마지막 갱신 ${formatTime(state.dataTimestamp)}`;
+      dom.notice.textContent = `데이터 갱신이 8시간 이상 지연되고 있습니다. 마지막 갱신 ${formatTime(state.dataTimestamp)}`;
     }
     return;
   }
