@@ -45,6 +45,8 @@ const state = {
 };
 
 let countdownTimer = null;
+let liveRefreshTimer = null;
+let liveRefreshInFlight = false;
 
 const dom = {
   notice: document.getElementById("dataNotice"),
@@ -362,7 +364,9 @@ async function fetchGames() {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const payload = await response.json();
     const rows = Array.isArray(payload) ? payload : (payload.games || []);
-    state.games = rows.map(normalizeGame);
+    const refreshedGames = rows.map(normalizeGame);
+    const refreshedById = new Map(refreshedGames.map((game) => [game.game_id, game]));
+    state.games = state.games.map((game) => refreshedById.get(game.game_id) || game);
     state.loadedAt = new Date();
     const timestamps = rows.map((row) => row.source_updated_at || row.ingested_at).filter(Boolean).map((value) => new Date(value)).filter((value) => !Number.isNaN(value.getTime()));
     state.dataTimestamp = timestamps.length ? new Date(Math.max(...timestamps.map((value) => value.getTime()))) : null;
@@ -375,6 +379,40 @@ async function fetchGames() {
     state.sourceState = "error";
   }
   renderAll();
+}
+
+function hasLiveRefreshWindow() {
+  const now = Date.now();
+  return state.games.some((game) => {
+    const startsAt = parseGameDate(game).getTime();
+    return startsAt - 30 * 60 * 1000 <= now && now <= startsAt + 5 * 60 * 60 * 1000;
+  });
+}
+
+async function refreshLiveData() {
+  if (demoMode || liveRefreshInFlight || !hasLiveRefreshWindow()) return;
+  liveRefreshInFlight = true;
+  try {
+    const response = await fetch(`${API_URL}?from=${encodeURIComponent(toISODate(addDays(today, -2)))}&to=${encodeURIComponent(toISODate(addDays(today, 1)))}`, { cache: "no-store" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const payload = await response.json();
+    const rows = Array.isArray(payload) ? payload : (payload.games || []);
+    if (!rows.length) return;
+    state.games = rows.map(normalizeGame);
+    state.loadedAt = new Date();
+    const timestamps = rows.map((row) => row.source_updated_at || row.ingested_at).filter(Boolean).map((value) => new Date(value)).filter((value) => !Number.isNaN(value.getTime()));
+    state.dataTimestamp = timestamps.length ? new Date(Math.max(...timestamps.map((value) => value.getTime()))) : state.dataTimestamp;
+    state.sourceState = "ready";
+    renderAll();
+    if (state.selectedGameId && dom.dialog.open) {
+      const selected = state.games.find((game) => game.game_id === state.selectedGameId);
+      if (selected) renderGameDetail(selected);
+    }
+  } catch (error) {
+    console.warn("Live KBO refresh failed; keeping the last successful data", error);
+  } finally {
+    liveRefreshInFlight = false;
+  }
 }
 
 function renderNotice() {
@@ -796,3 +834,4 @@ document.getElementById("shareGame").addEventListener("click", async () => {
 });
 
 fetchGames();
+liveRefreshTimer = setInterval(refreshLiveData, 60 * 1000);

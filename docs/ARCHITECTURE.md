@@ -51,7 +51,7 @@ Cloudflare Pages 정적 웹 앱
 
 - Python 수집 로직은 프런트엔드와 분리
 - 장시간 외부 API 호출 때문에 Edge Function보다 독립 실행 워커를 우선
-- 일정·점수 갱신: `.github/workflows/daily_update.yml`
+- 일정·점수 갱신: `.github/workflows/daily_update.yml` (10분 주기)
 - 최근 상세 기록 보강: `.github/workflows/detail_update.yml` (최근 14일)
 - 두 workflow 모두 `/api/ingest`에 upsert하며 실패 시 로그에 원인을 남김
 - 공식 예매처의 경기별 상태는 신선도 12시간 안에서만 확정값으로 사용
@@ -183,6 +183,7 @@ MVP에서는 외부 선수 고유 ID의 신뢰도가 확보될 때까지 이름 
 - 경기 상세: 게임 ID 단건 + 관련 기록 조회
 - 공개 데이터는 짧은 캐시와 재검증을 사용하되 `live` 상태는 캐시 시간을 최소화
 - 응답에 `data_updated_at`을 포함해 UI에서 신뢰 상태 표시
+- 경기 전후 5시간 동안 브라우저가 60초마다 최신 경기 데이터를 재조회한다. 수집기와 API의 부하를 줄이기 위해 실제 원본 수집은 10분 주기로 제한한다.
 
 ## 7. 오류 상태
 
