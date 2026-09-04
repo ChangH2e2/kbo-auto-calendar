@@ -224,6 +224,23 @@ function ticketActionText(ticket) {
   return ticket.requiresLogin ? "로그인 후 예매처 확인" : "공식 예매처에서 확인";
 }
 
+function ticketPanelHtml(game, ticket, { compact = false } = {}) {
+  const ticketState = getTicketState(ticket);
+  const shouldCountdown = !ticket.isOpen && (!ticket.isOfficial || ticket.officialState === "scheduled");
+  const openText = new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(ticket.openAt);
+  const isHomeFavorite = game.home === state.favoriteTeam;
+  const context = isHomeFavorite ? "홈 경기 예매" : `원정 경기 · 홈팀 ${game.home} 예매처`;
+  return `
+    <div class="ticket-panel ticket-${ticketState}${compact ? " ticket-panel-compact" : ""}" aria-label="예매 안내">
+      <div class="ticket-context">${escapeHtml(context)}</div>
+      <div class="ticket-head"><strong>${escapeHtml(ticketHeading(ticket, ticketState))}</strong><span class="countdown"${shouldCountdown ? ` data-countdown="${ticket.openAt.toISOString()}"${ticket.requiresLogin ? ' data-countdown-login="true"' : ""}` : ""}>${escapeHtml(ticketStatusNote(ticket))}</span></div>
+      <p class="ticket-absolute">${escapeHtml(ticketTimeText(ticket, openText))}</p>
+      <p class="ticket-source">${escapeHtml(ticketSourceDetail(ticket))}</p>
+      <p class="ticket-disclaimer">${escapeHtml(ticketDisclaimer(ticket))}</p>
+      <a class="${ticket.isOpen ? "primary-button" : "secondary-button"}" href="${escapeHtml(ticket.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(ticketActionText(ticket))}</a>
+    </div>`;
+}
+
 function getFilteredGames() {
   return state.games.filter((game) => {
     if (state.teamScope === "favorite" && game.home !== state.favoriteTeam && game.away !== state.favoriteTeam) return false;
@@ -424,9 +441,6 @@ function renderNextGame() {
   }
 
   const ticket = getTicket(game);
-  const ticketState = getTicketState(ticket);
-  const shouldCountdown = !ticket.isOpen && (!ticket.isOfficial || ticket.officialState === "scheduled");
-  const openText = new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(ticket.openAt);
   dom.nextGame.innerHTML = `
     <article class="next-game-card">
       <header class="next-game-head"><span>다음 경기</span><time datetime="${escapeHtml(game.date)}T${escapeHtml(game.time)}">${escapeHtml(formatKoreanDate(parseGameDate(game)))} ${escapeHtml(game.time)}</time></header>
@@ -444,14 +458,7 @@ function renderNextGame() {
         </div>
       </div>
       <div class="game-meta"><strong>${escapeHtml(game.stadium)}</strong>${game.broadcast ? ` / ${escapeHtml(game.broadcast)}` : ""}</div>
-      ${game.home === state.favoriteTeam ? `
-        <div class="ticket-panel ticket-${ticketState}" aria-label="예매 안내">
-          <div class="ticket-head"><strong>${escapeHtml(ticketHeading(ticket, ticketState))}</strong><span class="countdown"${shouldCountdown ? ` data-countdown="${ticket.openAt.toISOString()}"${ticket.requiresLogin ? ' data-countdown-login="true"' : ""}` : ""}>${escapeHtml(ticketStatusNote(ticket))}</span></div>
-          <p class="ticket-absolute">${escapeHtml(ticketTimeText(ticket, openText))}</p>
-          <p class="ticket-source">${escapeHtml(ticketSourceDetail(ticket))}</p>
-          <p class="ticket-disclaimer">${escapeHtml(ticketDisclaimer(ticket))}</p>
-          <a class="${ticket.isOpen ? "primary-button" : "secondary-button"}" href="${escapeHtml(ticket.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(ticketActionText(ticket))}</a>
-        </div>` : ""}
+      ${ticketPanelHtml(game, ticket)}
     </article>`;
   updateCountdowns();
 }
@@ -647,9 +654,7 @@ function detailNote(game, status) {
 function detailContentHtml(game, status) {
   if (status === "scheduled") {
     const ticket = getTicket(game);
-    const ticketState = getTicketState(ticket);
-    const openText = new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(ticket.openAt);
-    return `<section class="detail-card"><h2>예매 안내 <span class="inline-status ticket-${ticketState}">${escapeHtml(ticketHeading(ticket, ticketState))}</span></h2><div class="detail-tab-panel"><p>${escapeHtml(ticketTimeText(ticket, openText))}</p><p class="ticket-source">${escapeHtml(ticketSourceDetail(ticket))}</p><p class="ticket-disclaimer">${escapeHtml(ticketDisclaimer(ticket))}</p><a class="${ticket.isOpen ? "primary-button" : "secondary-button"}" href="${escapeHtml(ticket.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(ticketActionText(ticket))}</a></div></section>`;
+    return `<section class="detail-card"><h2>예매 안내</h2><div class="detail-tab-panel">${ticketPanelHtml(game, ticket, { compact: true })}</div></section>`;
   }
   if (["cancelled", "postponed"].includes(status)) return `<section class="detail-card"><div class="detail-tab-panel"><p>${escapeHtml(detailNote(game, status))}</p><p class="detail-empty">새 일정이 확인되면 이 화면에 반영됩니다.</p></div></section>`;
   return `
