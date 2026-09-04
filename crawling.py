@@ -227,14 +227,15 @@ def get_kbo_data():
                 if len(spans) >= 2:
                     away_team, home_team = spans[0].get_text(strip=True), spans[-1].get_text(strip=True)
                     if away_team not in VALID_TEAMS or home_team not in VALID_TEAMS: continue
+                    is_cancel = "취소" in remark_text or "우천" in remark_text
+                    if not game_id and not is_cancel:
+                        continue
                     resolved_game_id = game_id or fallback_game_id(full_date, away_team, home_team)
                     
                     # 💡 [중요] 변수 초기화 위치: 매 경기마다 새로 초기화해야 데이터가 안 꼬입니다.
                     h_score, a_score = None, None
                     h_line, a_line, h_rheb, a_rheb = None, None, None, None
                     hitters, pitchers = None, None
-                    is_cancel = "취소" in remark_text or "우천" in remark_text
-                    
                     if not is_cancel:
                         em = soup.find('em')
                         if em and len(em.find_all('span')) >= 3:
