@@ -6,22 +6,25 @@
 KBO / 공공데이터 API
         │
         ▼
-수집 워커 (Python)
+수집 워커 (Python / GitHub Actions)
   - 일정/상태/스코어 수집
   - 응답 검증 및 정규화
   - 실행 로그 기록
         │ service role, server only
+        │ HTTPS + Bearer secret
         ▼
-Supabase Postgres
-  private.raw_*     원본 및 운영 로그
-  public.games      정규화 경기 데이터
-  public.game_*     이닝/선수 기록
-  public.ticket_*   예매 정책
-        │ read-only Data API + RLS
+Cloudflare Pages Functions
+  /api/ingest (write, secret protected)
+  /api/games  (read-only)
+        │ D1 binding KBO_DB
         ▼
-Next.js Web App (Vercel)
-  - 서버 렌더링/캐시
-  - 모바일 PWA
+Cloudflare D1 (SQLite)
+  games / game_innings / teams / ticket_policies / ingestion_runs
+        │
+        ▼
+Cloudflare Pages 정적 웹 앱
+  - 모바일·데스크톱 반응형 UI
+  - 기기별 localStorage 개인화
   - 오류 및 갱신 상태 표시
 ```
 
@@ -29,28 +32,27 @@ Next.js Web App (Vercel)
 
 ### 프런트엔드
 
-- Next.js App Router + TypeScript
-- Tailwind CSS와 소수의 접근 가능한 UI primitives
+- 정적 HTML + vanilla JavaScript
+- CSS design system과 접근 가능한 semantic controls
 - 모바일 우선 반응형 레이아웃
 - 응원팀 설정은 MVP에서 `localStorage`
 - 서버 컴포넌트에서 초기 데이터를 읽고 필요한 부분만 클라이언트 상호작용 사용
 
 ### 데이터베이스/API
 
-- Supabase Postgres
-- 공개 클라이언트는 publishable key만 사용
-- Data API에 노출할 읽기 전용 객체를 명시적으로 관리
-- 모든 노출 테이블에 RLS 활성화
-- `anon`은 경기·예매 정책에 `SELECT`만 허용
-- `service_role`은 브라우저와 저장소에 절대 노출하지 않음
+- Cloudflare D1 (SQLite)
+- 브라우저는 Pages Function의 읽기 API만 호출
+- D1 binding은 Pages 런타임에서만 접근
+- ingest API는 `INGEST_TOKEN`으로 보호
+- D1 자격증명과 토큰은 브라우저 번들에 포함하지 않음
 
 ### 수집 실행
 
 - Python 수집 로직은 프런트엔드와 분리
 - 장시간 외부 API 호출 때문에 Edge Function보다 독립 실행 워커를 우선
-- 실행 위치 후보: Vercel Cron이 호출하는 보호된 수집 API 또는 별도 CI/worker
-- GitHub 예약 워크플로만 단독 사용하지 않음: 장기 무커밋 시 비활성화되는 운영 위험이 이미 발생함
-- 10분 간격의 가벼운 상태 갱신과 하루 1회의 전체 일정 동기화를 분리
+- 일정·점수 갱신: `.github/workflows/daily_update.yml`
+- 최근 상세 기록 보강: `.github/workflows/detail_update.yml` (최근 14일)
+- 두 workflow 모두 `/api/ingest`에 upsert하며 실패 시 로그에 원인을 남김
 
 ## 3. 데이터 모델
 
@@ -209,13 +211,14 @@ Supabase의 2026년 변경으로 새 테이블은 Data API에 자동 노출되�
 ## 10. 저장소 구조 제안
 
 ```text
-apps/web/                  Next.js 웹 앱
-workers/collector/         Python 수집기
-packages/domain/           경기 상태/시간 계산 규칙
-supabase/migrations/       스키마, GRANT, RLS
-supabase/seed.sql          팀/구장 기본 데이터
+index.html                 Cloudflare Pages 정적 진입점
+app.js / styles.css        UI와 도메인 표시 규칙
+functions/api/games.js     읽기 API
+functions/api/ingest.js    보호된 upsert API
+migrations/                D1 스키마
+crawling.py                KBO 수집기
 docs/                      제품·설계·운영 문서
-tests/fixtures/            KBO 응답 고정 샘플
+tests/fixtures/            KBO 응답 고정 샘플 (추가 예정)
 ```
 
 ## 11. 테스트 전략
@@ -230,10 +233,9 @@ tests/fixtures/            KBO 응답 고정 샘플
 ## 12. 구현 순서
 
 1. 고정 fixture와 파서 테스트 구축
-2. Supabase 마이그레이션과 RLS 작성
+2. D1 마이그레이션과 Pages binding 작성
 3. 멱등 수집 파이프라인 구현
 4. 오늘/일정/상세 읽기 모델 구현
 5. 새 UI 구현
-6. Cron, 상태 점검, 실패 알림 연결
+6. GitHub Actions 일정/상세 workflow와 실패 알림 연결
 7. 실제 데이터로 E2E 및 모바일 QA
-
