@@ -25,13 +25,14 @@ const DEFAULT_TICKET_RULES = {
 };
 
 const demoMode = new URLSearchParams(location.search).get("demo") === "1";
+const initialView = new URLSearchParams(location.search).get("view");
 const today = startOfDay(new Date());
 const storedFavoriteTeam = localStorage.getItem("kbo-favorite-team");
 const state = {
   games: [],
   favoriteTeam: storedFavoriteTeam || null,
   hasStoredTeam: Boolean(storedFavoriteTeam),
-  activeView: window.innerWidth >= 960 ? "schedule" : "today",
+  activeView: ["today", "schedule", "settings"].includes(initialView) ? initialView : (window.innerWidth >= 960 ? "schedule" : "today"),
   cursorDate: new Date(today),
   selectedDate: toISODate(today),
   selectedGameId: null,
