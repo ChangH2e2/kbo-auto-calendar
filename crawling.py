@@ -187,7 +187,10 @@ def normalize_naver_polling(game, polling):
         return {"is_cancel": True, "status": "cancelled", "status_note": polling.get("statusInfo") or "경기취소"}
     status_code = str(polling.get("statusCode") or "").upper()
     result = {}
-    if status_code in {"INGAME", "IN_PROGRESS", "PLAYING", "LIVE"}:
+    if status_code in {"BEFORE", "SCHEDULED", "PREVIEW"}:
+        result.update({"status": "scheduled", "home_score": None, "away_score": None,
+                       "home_line": None, "away_line": None, "home_rheb": None, "away_rheb": None})
+    elif status_code in {"INGAME", "IN_PROGRESS", "PLAYING", "LIVE"}:
         result["status"] = "live"
     elif status_code in {"RESULT", "FINAL", "END"}:
         result["status"] = "final"
@@ -237,7 +240,10 @@ def enrich_with_naver_live(all_results):
                 headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"}, timeout=5)
             poll.raise_for_status()
             update = normalize_naver_polling(target, poll.json().get("result", {}).get("game", {}))
-            target.update({key: value for key, value in update.items() if value is not None})
+            if update.get("status") == "scheduled":
+                target.update(update)
+            else:
+                target.update({key: value for key, value in update.items() if value is not None})
             target["naver_game_id"] = naver_id
         except Exception as exc:
             print(f"네이버 경기 보강 실패 ({naver_id}): {exc}")

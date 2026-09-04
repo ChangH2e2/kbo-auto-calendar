@@ -79,6 +79,12 @@ class CrawlingTests(unittest.TestCase):
         self.assertEqual(update["away_line"], "0|1|2")
         self.assertEqual(update["home_rheb"], "2|5|1|0")
 
+    def test_normalize_naver_before_clears_false_zero_score(self):
+        update = crawling.normalize_naver_polling({}, {"statusCode": "BEFORE", "statusInfo": "경기전"})
+        self.assertEqual(update["status"], "scheduled")
+        self.assertIsNone(update["away_score"])
+        self.assertIsNone(update["home_line"])
+
 
 if __name__ == "__main__":
     unittest.main()
