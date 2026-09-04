@@ -17,6 +17,6 @@ jobs:
         run: pip install -r requirements.txt
       - name: Run Crawler
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          KBO_INGEST_URL: ${{ secrets.KBO_INGEST_URL }}
+          KBO_INGEST_TOKEN: ${{ secrets.KBO_INGEST_TOKEN }}
         run: python crawling.py

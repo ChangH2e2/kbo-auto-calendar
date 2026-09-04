@@ -197,7 +197,7 @@ def get_kbo_data():
                     # 💡 [중요] 변수 초기화 위치: 매 경기마다 새로 초기화해야 데이터가 안 꼬입니다.
                     h_score, a_score = None, None
                     h_line, a_line, h_rheb, a_rheb = None, None, None, None
-                    a_pitchers, h_pitchers = None, None # 투수 정보 초기화 추가
+                    hitters, pitchers = None, None
                     is_cancel = "취소" in remark_text or "우천" in remark_text
                     
                     if not is_cancel:
@@ -240,7 +240,18 @@ def get_kbo_data():
 
 if __name__ == "__main__":
     data = get_kbo_data()
-    if data and URL and KEY:
+    ingest_url = os.environ.get("KBO_INGEST_URL", "").strip().rstrip("/")
+    ingest_token = os.environ.get("KBO_INGEST_TOKEN", "").strip()
+    if data and ingest_url:
+        response = requests.post(
+            f"{ingest_url}/api/ingest",
+            json={"games": data},
+            headers={"Authorization": f"Bearer {ingest_token}"} if ingest_token else {},
+            timeout=30,
+        )
+        response.raise_for_status()
+        print(f"🎉 Cloudflare D1 업데이트 완료! (총 {len(data)}건)")
+    elif data and URL and KEY:
         supabase = create_client(URL, KEY)
         supabase.table("kbo_matches").delete().gte("date", "2000-01-01").execute()
         supabase.table("kbo_matches").insert(data).execute()

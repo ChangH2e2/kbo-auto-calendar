@@ -1,0 +1,9 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "kbo-gameday",
+  "compatibility_date": "2026-09-04",
+  "pages_build_output_dir": ".",
+  "d1_databases": [
+    { "binding": "KBO_DB", "database_name": "kbo-gameday", "database_id": "9a63a8b5-dc70-46e8-b5cb-fc1dd9b9f2a7", "migrations_dir": "./migrations" }
+  ]
+}

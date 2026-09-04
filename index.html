@@ -1,456 +1,147 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>⚾️ KBO 스마트 캘린더</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        .inning-cell { width: 22px; text-align: center; font-size: 0.65rem; border-right: 1px solid #f3f4f6; padding: 4px 0; }
-        .rheb-cell { width: 26px; text-align: center; font-weight: bold; background-color: #f9fafb; font-size: 0.7rem; }
-        .today-highlight { border: 3px solid #3b82f6 !important; position: relative; }
-        .today-highlight::after { content: '오늘'; position: absolute; top: 2px; right: 4px; font-size: 0.55rem; color: #3b82f6; font-weight: 900; }
-        .btn-active { background-color: white !important; color: #2563eb !important; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .btn-inactive { color: #6b7280 !important; background-color: transparent !important; }
-        ::-webkit-scrollbar { display: none; }
-        .keep-all { word-break: keep-all; }
-        .win-highlight { color: #2563eb !important; font-weight: 900 !important; }
-
-
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f4f2eb">
+  <meta name="description" content="KBO 경기 일정, 예매 시점, 경기 결과를 한 흐름에서 확인하세요.">
+  <title>KBO GameDay</title>
+  <link rel="icon" href="data:,">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="./styles.css">
 </head>
-<body class="bg-gray-100 min-h-screen p-2 md:p-4 text-gray-800 break-keep keep-all">
-    <div class="max-w-6xl mx-auto">
-        <header class="bg-white p-4 rounded-xl shadow-sm mb-4 flex flex-col md:flex-row justify-between items-center gap-4">
-            <div class="flex items-center gap-4 w-full md:w-auto justify-between">
-                <button id="prevBtn" class="p-2 px-4 bg-gray-100 rounded-lg font-bold hover:bg-gray-200">◀</button>
-                <h1 id="viewTitle" class="text-xl font-black text-gray-800 text-center flex-1">로딩중...</h1>
-                <button id="nextBtn" class="p-2 px-4 bg-gray-100 rounded-lg font-bold hover:bg-gray-200">▶</button>
+<body>
+  <div class="app-shell">
+    <aside class="desktop-sidebar" aria-label="주요 메뉴">
+      <a class="wordmark" href="./" aria-label="KBO GameDay 홈">KBO GameDay</a>
+      <div class="sidebar-team">
+        <span class="eyebrow">응원팀</span>
+        <button class="team-button" id="sidebarTeamButton" type="button">
+          <span class="team-dot" data-team-dot="LG"></span>
+          <strong data-favorite-team>LG</strong>
+          <span class="button-hint">변경</span>
+        </button>
+      </div>
+      <nav class="sidebar-nav">
+        <button class="nav-item" data-view="today" type="button">오늘</button>
+        <button class="nav-item is-active" data-view="schedule" type="button">일정</button>
+        <button class="nav-item" data-view="settings" type="button">설정</button>
+      </nav>
+      <div class="sidebar-rules">
+        <strong>표시 규칙</strong>
+        <span>원정팀 왼쪽, 홈팀 오른쪽</span>
+        <span>월간 셀은 최대 3경기 표시</span>
+      </div>
+    </aside>
+
+    <main class="main-content" id="mainContent">
+      <header class="mobile-header">
+        <a class="wordmark" href="./">KBO GameDay</a>
+        <button class="team-chip" id="mobileTeamButton" type="button" aria-label="응원팀 변경">
+          <span class="team-dot" data-team-dot="LG"></span>
+          <strong data-favorite-team>LG</strong>
+          <span aria-hidden="true">⌄</span>
+        </button>
+      </header>
+      <div id="dataNotice" class="data-notice" role="status" hidden></div>
+
+      <section class="view" id="todayView" data-view-panel="today" hidden>
+        <div class="content-column today-layout">
+          <div id="nextGameMount"></div>
+          <section class="section-block" aria-labelledby="todayGamesTitle">
+            <div class="section-heading">
+              <div>
+                <h1 id="todayGamesTitle">오늘의 경기</h1>
+                <p id="todayDateLabel" class="section-meta"></p>
+              </div>
+              <button class="text-button" type="button" data-view="schedule">주간 일정 <span aria-hidden="true">→</span></button>
             </div>
-            <div class="flex items-center gap-2">
-                <select id="teamFilter" class="border-2 border-gray-100 p-2 rounded-lg text-sm font-bold">
-                    <option value="전체">전체 구단</option>
-                    <option value="KIA">KIA</option><option value="KT">KT</option><option value="LG">LG</option><option value="NC">NC</option><option value="SSG">SSG</option><option value="두산">두산</option><option value="롯데">롯데</option><option value="삼성">삼성</option><option value="키움">키움</option><option value="한화">한화</option>
-                </select>
-                <div class="flex bg-gray-100 p-1 rounded-lg">
-                    <button id="modeMonth" class="px-4 py-1.5 rounded-md text-xs font-bold transition-all">월간</button>
-                    <button id="modeWeek" class="px-4 py-1.5 rounded-md text-xs font-bold transition-all">주간</button>
-                </div>
+            <div id="todayGamesMount"></div>
+          </section>
+          <p class="freshness" id="todayFreshness"></p>
+        </div>
+      </section>
+
+      <section class="view schedule-view" id="scheduleView" data-view-panel="schedule">
+        <header class="schedule-toolbar">
+          <div class="date-navigation">
+            <h1 id="scheduleTitle">일정</h1>
+            <div class="nav-buttons" aria-label="기간 이동">
+              <button class="icon-button" id="previousPeriod" type="button" aria-label="이전 기간">‹</button>
+              <button class="period-button" id="currentPeriod" type="button">이번 주</button>
+              <button class="icon-button" id="nextPeriod" type="button" aria-label="다음 기간">›</button>
             </div>
+          </div>
+          <div class="schedule-filters" aria-label="일정 필터">
+            <div class="segmented" id="teamScopeFilter">
+              <button class="is-active" type="button" data-scope="favorite">내 팀 경기</button>
+              <button type="button" data-scope="all">전체 10개 구단</button>
+            </div>
+            <div class="segmented compact" id="venueFilter">
+              <button class="is-active" type="button" data-venue="all">전체</button>
+              <button type="button" data-venue="home">홈</button>
+              <button type="button" data-venue="away">원정</button>
+            </div>
+          </div>
         </header>
-        <div class="max-w-6xl mx-auto">
-        <header class="bg-white p-4 rounded-xl shadow-sm mb-4 flex flex-col md:flex-row justify-between items-center gap-4">
-            </header>
-        
-        <div class="w-full overflow-x-auto pb-4">
-            <div id="calendar" class="w-full"></div>
-        </div>
-    </div>
 
-    <div id="detailModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
-            <div class="bg-gray-800 p-4 text-white flex justify-between items-center">
-                <h2 class="font-black text-sm uppercase tracking-widest">Game Center</h2>
-                <button onclick="closeModal()" class="text-2xl font-bold leading-none">&times;</button>
+        <div class="schedule-workspace">
+          <div class="calendar-panel">
+            <div id="monthCalendar" class="month-calendar"></div>
+            <div id="weekSchedule" class="week-schedule"></div>
+            <footer class="calendar-legend" aria-label="경기 상태 범례">
+              <span><i class="legend-swatch scheduled"></i>예정</span>
+              <span><i class="legend-swatch live"></i>LIVE</span>
+              <span><i class="legend-swatch final"></i>종료</span>
+              <span><i class="legend-swatch cancelled"></i>취소</span>
+              <span><i class="legend-swatch postponed"></i>연기</span>
+              <span id="scheduleFreshness" class="legend-freshness"></span>
+            </footer>
+          </div>
+          <aside class="day-panel" id="selectedDayPanel" aria-label="선택한 날짜 경기"></aside>
+        </div>
+      </section>
+
+      <section class="view" id="settingsView" data-view-panel="settings" hidden>
+        <div class="content-column settings-layout">
+          <header class="simple-heading">
+            <h1>설정</h1>
+            <p>응원팀과 데이터 표시 방식을 관리합니다.</p>
+          </header>
+          <section class="settings-section">
+            <h2>응원팀</h2>
+            <div class="team-picker" id="teamPicker"></div>
+          </section>
+          <section class="settings-section source-card">
+            <div>
+              <h2>데이터 출처</h2>
+              <p>KBO 공식 경기 일정을 수집해 표시합니다. 점수와 기록은 수집 상태에 따라 늦게 반영될 수 있습니다.</p>
             </div>
-            <div id="modalBody" class="p-6 bg-white"></div>
+            <span id="settingsFreshness" class="source-status"></span>
+          </section>
         </div>
+      </section>
+    </main>
+  </div>
+
+  <nav class="mobile-bottom-nav" aria-label="모바일 주요 메뉴">
+    <button data-view="today" type="button"><span aria-hidden="true">⌂</span><strong>오늘</strong></button>
+    <button class="is-active" data-view="schedule" type="button"><span aria-hidden="true">▦</span><strong>일정</strong></button>
+    <button data-view="settings" type="button"><span aria-hidden="true">⚙</span><strong>설정</strong></button>
+  </nav>
+
+  <dialog class="game-dialog" id="gameDialog" aria-labelledby="dialogTitle">
+    <div class="dialog-shell">
+      <header class="dialog-header">
+        <button class="dialog-back" id="closeDialog" type="button" aria-label="경기 상세 닫기">←</button>
+        <h1 id="dialogTitle">경기 상세</h1>
+        <button class="dialog-share" id="shareGame" type="button">공유</button>
+      </header>
+      <div id="dialogBody" class="dialog-body"></div>
     </div>
+  </dialog>
 
-<script>
-    const SUPABASE_URL = 'https://rqdwdortnbpkpipussah.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_72QYev7CliIOdaHVa9caFg_mm19QiZE';
-    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    
-    // 👇 여기부터 추가! [구단별 예매 정책 데이터]
-    const TEAM_RULES = {
-        "LG": { vendor: "티켓링크", url: "https://www.ticketlink.co.kr/sports/baseball/64", daysBefore: 7, openTime: 11, presale: "연간회원 1시간 전(10:00)" },
-        "두산": { vendor: "인터파크", url: "https://ticket.interpark.com/Contents/Sports/GoodsInfo?SportsCode=07001&TeamCode=PB004", daysBefore: 7, openTime: 11, presale: "베어스클럽 1시간 전(10:00)" },
-        "키움": { vendor: "인터파크", url: "https://ticket.interpark.com/Contents/Sports/GoodsInfo?SportsCode=07001&TeamCode=PB003", daysBefore: 7, openTime: 14, presale: "멤버십 2시간 전(12:00)" },
-        "KT": { vendor: "티켓링크", url: "https://www.ticketlink.co.kr/sports/baseball/62", daysBefore: 7, openTime: 14, presale: "선행예매권 8일 전" },
-        "KIA": { vendor: "티켓링크", url: "https://www.ticketlink.co.kr/sports/baseball/58", daysBefore: 7, openTime: 11, presale: "얼리패스 8일 전 11:00" },
-        "삼성": { vendor: "티켓링크", url: "https://www.ticketlink.co.kr/sports/baseball/57", daysBefore: 7, openTime: 11, presale: "블루멤버십 8일 전 11:00" },
-        "한화": { vendor: "티켓링크", url: "https://www.ticketlink.co.kr/sports/baseball/60", daysBefore: 7, openTime: 11, presale: "선예매권 8일 전 11:00" },
-        "NC": { vendor: "NC 자체 앱", url: "https://ticket.ncdinos.com/", daysBefore: 7, openTime: 11, presale: "멤버십 8일 전 11:00" },
-        "롯데": { vendor: "롯데 자체 앱", url: "https://ticket.giantsclub.com/", daysBefore: 7, openTime: 14, presale: "골드회원 4시간 전(10:00)" },
-        "SSG": { vendor: "SSG.COM", url: "https://ticket.ssg.com/ticket", daysBefore: 7, openTime: 11, presale: "멤버십 10일~8일 전 11:00" }
-    };
-
-    let allMatches = [], currentDate = new Date();
-    // 💡 화면이 작으면(모바일) 'week'로 시작, 크면(PC) 'month'로 시작!
-    let viewMode = window.innerWidth < 768 ? 'week' : 'month';
-    const now = new Date();
-    const TODAY_STR = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-
-    async function fetchMatches() {
-        const { data, error } = await _supabase.from('kbo_matches').select('*').order('date', {ascending: true});
-        allMatches = data || []; 
-        renderView();
-    }
-
-    let countdownInterval; // 실시간 타이머 아이디 저장용
-
-    function closeModal() { 
-        document.getElementById('detailModal').classList.add('hidden'); 
-        if (countdownInterval) clearInterval(countdownInterval); // 창 닫을 때 타이머 정지
-    }
-
-    function updateButtonUI() {
-        const monthBtn = document.getElementById('modeMonth');
-        const weekBtn = document.getElementById('modeWeek');
-        if (viewMode === 'month') {
-            monthBtn.className = "px-4 py-1.5 rounded-md text-xs font-bold btn-active";
-            weekBtn.className = "px-4 py-1.5 rounded-md text-xs font-bold btn-inactive";
-        } else {
-            monthBtn.className = "px-4 py-1.5 rounded-md text-xs font-bold btn-inactive";
-            weekBtn.className = "px-4 py-1.5 rounded-md text-xs font-bold btn-active";
-        }
-    }
-
-    window.switchTab = function(tabName) {
-        document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-        document.querySelectorAll('[id^="btn-tab-"]').forEach(el => {
-            el.classList.remove('border-blue-600', 'text-blue-600');
-            el.classList.add('border-transparent', 'text-gray-400');
-        });
-        
-        document.getElementById('tab-' + tabName).classList.remove('hidden');
-        document.getElementById('btn-tab-' + tabName).classList.remove('border-transparent', 'text-gray-400');
-        document.getElementById('btn-tab-' + tabName).classList.add('border-blue-600', 'text-blue-600');
-    };
-
-    function openDetail(date, home, away) {
-        const m = allMatches.find(x => x.date === date && x.home === home && x.away === away);
-        if(!m) return;
-        
-        const modalBody = document.getElementById('modalBody');
-        const isCancel = m.is_cancel === true;
-        
-        const now = new Date();
-        const gameDateTime = new Date(`${m.date}T${m.time}:00`);
-        const hasStarted = now >= gameDateTime; 
-        
-        const isFinished = hasStarted && m.home_score !== null && m.home_score !== undefined && m.home_score !== '';
-        const awayWin = isFinished && Number(m.away_score) > Number(m.home_score);
-        const homeWin = isFinished && Number(m.home_score) > Number(m.away_score);
-
-        if (isCancel) {
-            modalBody.innerHTML = `<div class="text-center py-10"><div class="text-red-500 font-black text-lg mb-2">우천취소</div><div class="text-2xl font-black mb-4">${m.home} VS ${m.away}</div><p class="text-gray-500 text-sm">해당 경기는 기상 상황으로 인해 취소되었습니다.</p></div>`;
-        } else if (isFinished) {
-            const hL = m.home_line ? m.home_line.split('|') : [];
-            const aL = m.away_line ? m.away_line.split('|') : [];
-            const hR = m.home_rheb ? m.home_rheb.split('|') : ['0','0','0','0'];
-            const aR = m.away_rheb ? m.away_rheb.split('|') : ['0','0','0','0'];
-            
-            let innings = '';
-            for(let i=1; i<=Math.max(hL.length, 9); i++) innings += `<th class="inning-cell">${i}</th>`;
-            const getRow = (line) => {
-                let res = '';
-                for(let i=0; i<Math.max(line.length, 9); i++) res += `<td class="inning-cell font-bold">${line[i] || '-'}</td>`;
-                return res;
-            };
-
-            // 🌟 1. 공통 헤더 (팀 및 점수)
-            let html = `
-                <div class="flex justify-between items-center mb-6 px-2">
-                    <div class="text-center"><div class="text-xl font-black ${awayWin ? 'text-blue-600' : ''}">${m.away}</div><div class="text-[0.6rem] text-gray-400">AWAY</div></div>
-                    <div class="text-3xl font-black tracking-tighter">${m.away_score} : ${m.home_score}</div>
-                    <div class="text-center"><div class="text-xl font-black ${homeWin ? 'text-blue-600' : ''}">${m.home}</div><div class="text-[0.6rem] text-gray-400">HOME</div></div>
-                </div>
-                
-                <div class="flex border-b mb-4">
-                    <button onclick="switchTab('score')" id="btn-tab-score" class="flex-1 py-2 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition-colors">스코어보드</button>
-                    <button onclick="switchTab('hitter')" id="btn-tab-hitter" class="flex-1 py-2 text-sm font-bold border-b-2 border-transparent text-gray-400 transition-colors">타자 기록</button>
-                    <button onclick="switchTab('pitcher')" id="btn-tab-pitcher" class="flex-1 py-2 text-sm font-bold border-b-2 border-transparent text-gray-400 transition-colors">투수 기록</button>
-                </div>`;
-
-            // 🌟 3. 스코어보드 탭 (기본 노출)
-            html += `
-                <div id="tab-score" class="tab-content block pb-4">
-                    <div class="overflow-x-auto border rounded-xl shadow-sm">
-                        <table class="w-full text-center">
-                            <thead class="bg-gray-50 border-b"><tr><th class="p-2 text-[0.6rem] text-left">팀</th>${innings}<th class="rheb-cell">R</th><th class="rheb-cell">H</th><th class="rheb-cell">E</th><th class="rheb-cell">B</th></tr></thead>
-                            <tbody>
-                                <tr class="border-b"><td class="p-2 text-[0.65rem] font-bold">${m.away}</td>${getRow(aL)}<td class="rheb-cell text-red-500">${aR[0]}</td><td class="rheb-cell">${aR[1]}</td><td class="rheb-cell">${aR[2]}</td><td class="rheb-cell">${aR[3]}</td></tr>
-                                <tr><td class="p-2 text-[0.65rem] font-bold">${m.home}</td>${getRow(hL)}<td class="rheb-cell text-red-500">${hR[0]}</td><td class="rheb-cell">${hR[1]}</td><td class="rheb-cell">${hR[2]}</td><td class="rheb-cell">${hR[3]}</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>`;
-
-            // 🌟 4. 타자 기록 탭 (JSON 렌더링)
-            const renderHitters = (teamData) => {
-                if(!teamData || teamData.length === 0) return '<tr><td colspan="6" class="p-4 text-center text-xs text-gray-500">아직 데이터가 업데이트되지 않았습니다.</td></tr>';
-                return teamData.map(h => `
-                    <tr class="border-b border-gray-50 hover:bg-gray-50">
-                        <td class="p-2 text-gray-500">${h.order}</td>
-                        <td class="p-2 font-bold">${h.name}<span class="text-[0.55rem] font-normal text-gray-400 ml-1">${h.pos}</span></td>
-                        <td class="p-2">${h.ab}</td><td class="p-2 font-bold text-blue-600">${h.hit}</td>
-                        <td class="p-2">${h.rbi}</td><td class="p-2 text-gray-600">${h.avg}</td>
-                        <td class="p-2 text-left text-[0.6rem] text-gray-500 min-w-[120px] whitespace-normal leading-tight">${h.records}</td>
-                    </tr>`).join('');
-            };
-
-            html += `
-                <div id="tab-hitter" class="tab-content hidden h-[300px] overflow-y-auto overflow-x-auto pb-4">
-                    <div class="sticky top-0 bg-white/90 backdrop-blur-sm p-1 font-bold text-xs text-blue-600">🏃‍♂️ ${m.away} (원정)</div>
-                    <table class="w-full text-center text-[0.65rem] whitespace-nowrap mb-4">
-                        <thead class="bg-gray-100/80 text-[0.6rem] text-gray-600"><tr><th class="p-1.5">타순</th><th class="p-1.5 text-left">선수명</th><th class="p-1.5">타수</th><th class="p-1.5">안타</th><th class="p-1.5">타점</th><th class="p-1.5">타율</th><th class="p-1.5 text-left">이닝 상세</th></tr></thead>
-                        <tbody>${m.hitter_details ? renderHitters(m.hitter_details.away) : ''}</tbody>
-                    </table>
-                    <div class="sticky top-0 bg-white/90 backdrop-blur-sm p-1 font-bold text-xs text-red-600">🏃‍♂️ ${m.home} (홈)</div>
-                    <table class="w-full text-center text-[0.65rem] whitespace-nowrap">
-                        <thead class="bg-gray-100/80 text-[0.6rem] text-gray-600"><tr><th class="p-1.5">타순</th><th class="p-1.5 text-left">선수명</th><th class="p-1.5">타수</th><th class="p-1.5">안타</th><th class="p-1.5">타점</th><th class="p-1.5">타율</th><th class="p-1.5 text-left">이닝 상세</th></tr></thead>
-                        <tbody>${m.hitter_details ? renderHitters(m.hitter_details.home) : ''}</tbody>
-                    </table>
-                </div>`;
-
-            // 🌟 5. 투수 기록 탭 (JSON 렌더링)
-            const renderPitchers = (teamData) => {
-                if(!teamData || teamData.length === 0) return '<tr><td colspan="6" class="p-4 text-center text-xs text-gray-500">아직 데이터가 업데이트되지 않았습니다.</td></tr>';
-                return teamData.map(p => {
-                    const resColor = p.result.includes('승') ? 'text-blue-600' : p.result.includes('패') ? 'text-red-600' : 'text-gray-500';
-                    return `
-                    <tr class="border-b border-gray-50 hover:bg-gray-50">
-                        <td class="p-2 font-bold text-left">${p.name}</td>
-                        <td class="p-2 font-black ${resColor}">${p.result || '-'}</td>
-                        <td class="p-2">${p.ip}</td><td class="p-2">${p.np}</td>
-                        <td class="p-2 font-bold text-red-500">${p.so}</td><td class="p-2">${p.er}</td>
-                    </tr>`;
-                }).join('');
-            };
-
-            html += `
-                <div id="tab-pitcher" class="tab-content hidden h-[300px] overflow-y-auto pb-4">
-                     <div class="sticky top-0 bg-white/90 backdrop-blur-sm p-1 font-bold text-xs text-blue-600">🧤 ${m.away} (원정)</div>
-                    <table class="w-full text-center text-[0.65rem] whitespace-nowrap mb-4">
-                        <thead class="bg-gray-100/80 text-[0.6rem] text-gray-600"><tr><th class="p-1.5 text-left">선수명</th><th class="p-1.5">결과</th><th class="p-1.5">이닝</th><th class="p-1.5">투구수</th><th class="p-1.5">삼진</th><th class="p-1.5">실점</th></tr></thead>
-                        <tbody>${m.pitcher_details ? renderPitchers(m.pitcher_details.away) : ''}</tbody>
-                    </table>
-                    <div class="sticky top-0 bg-white/90 backdrop-blur-sm p-1 font-bold text-xs text-red-600">🧤 ${m.home} (홈)</div>
-                    <table class="w-full text-center text-[0.65rem] whitespace-nowrap">
-                        <thead class="bg-gray-100/80 text-[0.6rem] text-gray-600"><tr><th class="p-1.5 text-left">선수명</th><th class="p-1.5">결과</th><th class="p-1.5">이닝</th><th class="p-1.5">투구수</th><th class="p-1.5">삼진</th><th class="p-1.5">실점</th></tr></thead>
-                        <tbody>${m.pitcher_details ? renderPitchers(m.pitcher_details.home) : ''}</tbody>
-                    </table>
-                </div>`;
-                
-            modalBody.innerHTML = html;
-        } else {
-
-            const ticket = getTicketStatus(m.home, m.date); 
-            
-            modalBody.innerHTML = `
-                <div class="text-center py-4">
-                    <div class="inline-block bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-[0.7rem] font-black tracking-wider mb-4 border border-blue-100">${m.date} ${m.time} 예정</div>
-                    <div class="text-3xl font-black mb-2">${m.home} <span class="text-gray-300 text-xl mx-2">VS</span> ${m.away}</div>
-                    <p class="text-gray-500 text-sm mb-6 font-medium">📍 ${m.stadium}</p>
-
-                    <div id="countdownBox" class="mb-6 p-4 border rounded-xl shadow-sm transition-all text-center">
-                        <span class="text-gray-400 font-bold text-sm">시간 계산 중...</span>
-                    </div>
-
-                    <div class="space-y-3 flex flex-col px-4">
-                        <a href="${ticket.url}" target="_blank" class="block w-full py-4 rounded-xl font-black text-white bg-blue-600 hover:bg-blue-700 shadow-lg transition-transform active:scale-95">
-                            🎫 ${m.home} 예매처 (${ticket.vendor}) 이동하기
-                        </a>
-                    </div>
-                </div>`;
-                
-            // [핵심!] 1초마다 실행되는 실시간 타이머 로직
-            if (countdownInterval) clearInterval(countdownInterval); // 혹시 돌고 있는 타이머 리셋
-            
-            function updateTimer() {
-                const now = new Date();
-                const diffMs = ticket.openDate.getTime() - now.getTime();
-                const box = document.getElementById('countdownBox');
-                
-                if (!box) {
-                    clearInterval(countdownInterval);
-                    return;
-                }
-
-                // 예매 시간이 지났을 때
-                if (diffMs <= 0) {
-                    box.className = "mb-6 p-4 bg-green-50 border-green-200 border rounded-xl shadow-sm text-center";
-                    box.innerHTML = `<span class="text-green-700 font-black text-lg">🟢 예매 진행 중</span><div class="text-xs text-green-600 mt-1">지금 바로 잔여석을 확인하세요!</div>`;
-                    clearInterval(countdownInterval);
-                    return;
-                }
-
-                // 남은 시간 계산
-                const d = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-                const h = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const m_min = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-                const s = Math.floor((diffMs % (1000 * 60)) / 1000);
-
-                box.className = "mb-6 p-4 bg-orange-50 border-orange-200 border rounded-xl shadow-sm text-center";
-                
-                // 오픈 날짜 포맷팅 (예: 5/16 10시)
-                const month = ticket.openDate.getMonth() + 1;
-                const date = ticket.openDate.getDate();
-                const hour = ticket.openDate.getHours();
-
-                // 시간이 10보다 작으면 앞에 0 붙이기 (예: 09초)
-                const formatTime = (num) => String(num).padStart(2, '0');
-
-                let timeString = d > 0 ? `${d}일 ${formatTime(h)}:${formatTime(m_min)}:${formatTime(s)}` : `${formatTime(h)}:${formatTime(m_min)}:${formatTime(s)}`;
-
-                box.innerHTML = `
-                    <div class="text-orange-700 font-bold text-sm mb-1">⏳ ${month}/${date} ${hour}시 오픈 예정</div>
-                    <div class="text-3xl text-red-500 font-black tracking-widest" style="font-variant-numeric: tabular-nums;">
-                        ${timeString}
-                    </div>
-                `;
-            }
-
-            updateTimer(); // 모달 켜지자마자 즉시 1번 실행
-            countdownInterval = setInterval(updateTimer, 1000); // 이후 1초마다 업데이트
-        }
-
-        document.getElementById('detailModal').classList.remove('hidden');
-
-    }
-
-    // 👇 기존 getTicketStatus 함수를 지우고 아래 코드로 교체하세요!
-    function getTicketStatus(homeTeam, gameDateStr) {
-        const rule = TEAM_RULES[homeTeam] || { daysBefore: 7, openTime: 11, vendor: "티켓링크", url: "https://m.ticketlink.co.kr" };
-        const gameDate = new Date(gameDateStr);
-        
-        // 경기일 기준 며칠 전, 몇 시인지 계산
-        const openDate = new Date(gameDate.getTime() - (rule.daysBefore * 24 * 60 * 60 * 1000));
-        openDate.setHours(rule.openTime, 0, 0, 0);
-
-        return { openDate: openDate, url: rule.url, vendor: rule.vendor };
-    }
-
-    function getMatchHTML(m, mode) {
-        const isToday = m.date === TODAY_STR;
-        const isUchwi = m.is_cancel === true;
-        const awayWin = m.home_score !== null && m.away_score > m.home_score;
-        const homeWin = m.home_score !== null && m.home_score > m.away_score;
-        
-        const gameDateTime = new Date(`${m.date}T${m.time}:00`);
-        const hasStarted = new Date() >= gameDateTime;
-
-        const teamStyle = (isWin) => isWin ? "font-black text-blue-600" : "font-bold text-gray-700";
-
-        if (mode === 'week') {
-            // 🌟 [주간 뷰] 모바일 화면 전체를 쾌적하고 넓게 사용!
-            let centerDisplay = `<span class="text-gray-300 font-normal mx-3 text-sm">vs</span>`;
-            if (isUchwi) {
-                centerDisplay = `<span class="bg-red-50 text-red-600 px-2 py-0.5 rounded font-black text-xs border border-red-200 mx-3">취소</span>`;
-            } else if (hasStarted && m.home_score !== null && m.home_score !== undefined) {
-                centerDisplay = `<span class="font-black mx-4 text-gray-800 text-xl tracking-tighter">
-                    <span class="${homeWin ? 'text-blue-600' : ''}">${m.home_score}</span> : <span class="${awayWin ? 'text-blue-600' : ''}">${m.away_score}</span>
-                </span>`;
-            }
-
-            return `
-            <div onclick="openDetail('${m.date}', '${m.home}', '${m.away}')" class="cursor-pointer bg-white border border-gray-100 rounded md:rounded-lg p-[2px] md:p-2 mb-[2px] shadow-sm hover:border-blue-400 transition-all overflow-hidden">
-                <div class="flex justify-center items-center w-full text-[0.5rem] md:text-[0.6rem] tracking-tighter whitespace-nowrap">
-                    <div class="text-right ${teamStyle(homeWin)} leading-none">${m.home}</div>
-                    ${centerDisplay}
-                    <div class="text-left ${teamStyle(awayWin)} leading-none">${m.away}</div>
-                </div>
-                <div class="text-[0.45rem] md:text-[0.5rem] text-gray-400 mt-[2px] md:mt-1 text-center font-medium leading-none overflow-hidden">
-                    ${m.stadium} ${m.time}
-                </div>
-            </div>`;
-        } else {
-            // 🌟 [월간 뷰] 뇌절 코드 삭제! 가장 예뻤던 비율로 롤백 + 텍스트 잘림 방지
-            let centerDisplay = `<span class="text-gray-300 font-light mx-0.5 text-[10px]">vs</span>`;
-            if (isUchwi) {
-                centerDisplay = `<span class="bg-red-50 text-red-600 px-1 rounded-[2px] font-black text-[9px] border border-red-200 mx-0.5">취소</span>`;
-            } else if (hasStarted && m.home_score !== null && m.home_score !== undefined) {
-                centerDisplay = `<span class="font-black mx-0.5 text-gray-800 text-[11px] tracking-tighter">
-                    <span class="${homeWin ? 'text-blue-600' : ''}">${m.home_score}</span>:<span class="${awayWin ? 'text-blue-600' : ''}">${m.away_score}</span>
-                </span>`;
-            }
-
-            // 💡 scale, w-115% 꼼수 싹 제거. p-1 여백으로 숨통을 틔워주고 whitespace-nowrap으로 한 줄 유지!
-            return `
-            <div onclick="openDetail('${m.date}', '${m.home}', '${m.away}')" class="cursor-pointer bg-white border border-gray-100 rounded p-1 mb-1 shadow-sm hover:border-blue-400 transition-all flex flex-col items-center justify-center">
-                <div class="flex justify-center items-center w-full whitespace-nowrap">
-                    <span class="${teamStyle(homeWin)} text-[10px] leading-none">${m.home}</span>
-                    ${centerDisplay}
-                    <span class="${teamStyle(awayWin)} text-[10px] leading-none">${m.away}</span>
-                </div>
-                <div class="text-[8px] text-gray-400 mt-1 text-center font-medium leading-none tracking-tighter">
-                    ${m.stadium} ${m.time}
-                </div>
-            </div>`;
-        }
-    }
-
-    async function renderView() {
-        const container = document.getElementById('calendar');
-        const filter = document.getElementById('teamFilter').value;
-        container.innerHTML = '';
-        updateButtonUI();
-
-        if (viewMode === 'month') {
-            const y = currentDate.getFullYear(), m = currentDate.getMonth() + 1;
-            document.getElementById('viewTitle').innerText = `${y}년 ${m}월`;
-            
-            // 💡 월간뷰 컨테이너: 그리드 간격(gap)을 0.5로 확 줄입니다!
-            container.className = 'grid grid-cols-7 gap-0.5 md:gap-2'; 
-            
-            const startDay = new Date(y, m-1, 1).getDay(), days = new Date(y, m, 0).getDate();
-            for(let i=0; i<startDay; i++) container.innerHTML += '<div class="min-h-[80px] bg-gray-50/30 rounded-xl"></div>';
-            for(let d=1; d<=days; d++) {
-                const ds = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                const isToday = ds === TODAY_STR;
-                const matches = allMatches.filter(mt => mt.date === ds && (filter === '전체' || mt.home === filter || mt.away === filter));
-                const holiday = matches.length > 0 ? matches[0].holiday_name : null;
-                const isSun = new Date(y, m-1, d).getDay() === 0;
-
-                // 💡 날짜 박스 내부 여백(padding)도 줄여서 가용 면적 최대화
-                let dayDiv = `
-                    <div class="bg-white/40 p-0.5 md:p-1 min-h-[90px] md:min-h-[110px] rounded-lg border border-transparent flex flex-col ${isToday ? 'today-highlight' : ''}">
-                        <div class="flex justify-between items-start mb-1 px-0.5">
-                            <span class="text-[0.65rem] md:text-xs font-black ${isSun || holiday ? 'text-red-500' : 'text-gray-800'}">${d}</span>
-                            ${holiday ? `<span class="text-[0.45rem] font-bold text-red-400 truncate max-w-[40px]">${holiday}</span>` : ''}
-                        </div>`;
-                if (matches.length > 0) matches.forEach(mt => dayDiv += getMatchHTML(mt, 'month'));
-                else dayDiv += `<div class="flex-1 flex items-center justify-center text-[0.55rem] text-gray-300 font-bold italic">경기 없음</div>`;
-                container.innerHTML += dayDiv + `</div>`;
-            }
-        } else {
-            container.className = 'flex flex-col gap-3';
-            const start = new Date(currentDate); start.setDate(currentDate.getDate() - currentDate.getDay());
-            document.getElementById('viewTitle').innerText = `주간 일정`;
-            for(let i=0; i<7; i++) {
-                const d = new Date(start); d.setDate(start.getDate()+i);
-                const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-                const isToday = ds === TODAY_STR;
-                const matches = allMatches.filter(mt => mt.date === ds && (filter === '전체' || mt.home === filter || mt.away === filter));
-                const holiday = matches.length > 0 ? matches[0].holiday_name : null;
-                
-                // 💡 주간뷰: 모바일에서도 1열(grid-cols-1)로 넓게 배치하여 공간 활용
-                let dayDiv = `<div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 ${isToday ? 'today-highlight' : ''}"><div class="flex items-center gap-2 mb-3"><span class="font-black text-sm ${d.getDay() === 0 || holiday ? 'text-red-500' : 'text-gray-800'}">${ds}</span>${holiday ? `<span class="bg-red-50 text-red-500 text-[10px] px-2 py-0.5 rounded-full font-bold">${holiday}</span>` : ''}</div><div class="grid grid-cols-1 md:grid-cols-2 gap-3">`;
-                if (matches.length > 0) matches.forEach(mt => dayDiv += getMatchHTML(mt, 'week'));
-                else dayDiv += `<div class="col-span-full py-6 text-center text-sm text-gray-300 font-bold italic">오늘은 경기가 없습니다.</div>`;
-                container.innerHTML += dayDiv + `</div></div>`;
-            }
-        }
-    }
-
-    document.getElementById('modeMonth').onclick = () => { viewMode = 'month'; renderView(); };
-    document.getElementById('modeWeek').onclick = () => { viewMode = 'week'; renderView(); };
-    document.getElementById('prevBtn').onclick = () => { 
-        if(viewMode === 'month') currentDate.setMonth(currentDate.getMonth()-1);
-        else currentDate.setDate(currentDate.getDate()-7);
-        renderView(); 
-    };
-    document.getElementById('nextBtn').onclick = () => { 
-        if(viewMode === 'month') currentDate.setMonth(currentDate.getMonth()+1);
-        else currentDate.setDate(currentDate.getDate()+7);
-        renderView(); 
-    };
-    document.getElementById('teamFilter').onchange = renderView;
-    fetchMatches();
-    
-</script>
+  <script src="./app.js" defer></script>
 </body>
 </html>
