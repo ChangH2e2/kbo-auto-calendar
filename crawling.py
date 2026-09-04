@@ -11,6 +11,12 @@ URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
 KEY = os.environ.get("SUPABASE_KEY", "").strip()
 HOLIDAY_API_KEY = "4b4ad3442715e2758dd90b80e40e0a219d74b6ca6f870ad85cdeb8a37709e073"
 VALID_TEAMS = ['KIA', 'KT', 'LG', 'NC', 'SSG', '두산', '롯데', '삼성', '키움', '한화']
+KBO_HEADERS = {
+    "User-Agent": "Mozilla/5.0",
+    "Referer": "https://www.koreabaseball.com/Schedule/Schedule.aspx",
+    "X-Requested-With": "XMLHttpRequest",
+    "Accept": "application/json, text/javascript, */*; q=0.01",
+}
 
 def get_holidays(year):
     """대체 공휴일을 포함한 공휴일 정보 수집"""
@@ -47,7 +53,7 @@ def get_line_score(game_id):
             "gameId": game_id
         }
         headers = {"User-Agent": "Mozilla/5.0"}
-        res = requests.post(url, data=payload, headers=headers, timeout=5)
+        res = requests.post(url, data=payload, headers={**KBO_HEADERS, **headers}, timeout=5)
         
         if res.status_code != 200:
             return None, None, None, None
@@ -89,7 +95,7 @@ def get_boxscore_details(game_id):
     headers = {"User-Agent": "Mozilla/5.0"}
     
     try:
-        res = requests.post(url, data=payload, headers=headers, timeout=5)
+        res = requests.post(url, data=payload, headers={**KBO_HEADERS, **headers}, timeout=5)
         data = res.json()
     except Exception as e:
         print(f"박스스코어 에러 ({game_id}): {e}")
@@ -151,7 +157,7 @@ def get_kbo_data():
         payload = {"leId": "1", "srIdList": "0", "seasonId": current_year, "gameMonth": current_month, "teamId": ""}
         
         try:
-            res = requests.post(api_url, data=payload, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+            res = requests.post(api_url, data=payload, headers=KBO_HEADERS, timeout=10)
             rows = res.json().get('rows', [])
         except Exception as e:
             print(f"{current_month}월 데이터 호출 실패: {e}")
