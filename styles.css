@@ -214,6 +214,10 @@ button:active { transform: translateY(1px); }
 .row-state.cancelled { padding: 5px 7px; border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--line)); border-radius: 8px; color: var(--danger); background: var(--danger-soft); }
 .row-state.postponed { padding: 5px 7px; border: 1px dashed var(--amber); border-radius: 8px; color: var(--amber); }
 .freshness { margin: -12px 2px 0; color: var(--ink-faint); font-size: 12px; text-align: right; }
+.refresh-row { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 8px 16px 0; color: var(--ink-faint); font-size: 11px; }
+.refresh-button { min-height: 34px; border: 1px solid var(--line-strong); border-radius: 8px; padding: 0 10px; background: var(--surface); color: var(--ink-soft); font-size: 12px; font-weight: 750; cursor: pointer; }
+.refresh-button:hover { border-color: var(--accent); color: var(--accent); }
+.refresh-button:disabled { cursor: wait; opacity: .6; }
 
 .schedule-toolbar { padding: 20px 16px 16px; border-bottom: 1px solid var(--line); background: var(--surface); }
 .date-navigation { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
@@ -353,6 +357,7 @@ button:active { transform: translateY(1px); }
   .today-layout > :first-child { position: sticky; top: 34px; }
   .today-layout .freshness { grid-column: 2; }
   .schedule-toolbar { min-height: 94px; padding: 20px 28px; display: flex; align-items: center; justify-content: space-between; gap: 22px; }
+  .refresh-row { padding-right: 28px; }
   .date-navigation { justify-content: flex-start; }
   .date-navigation h1 { min-width: 190px; font-size: 30px; }
   .schedule-filters { display: flex; margin: 0; }

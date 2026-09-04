@@ -63,7 +63,9 @@ const dom = {
   teamPicker: document.getElementById("teamPicker"),
   firstVisitNotice: document.getElementById("firstVisitNotice"),
   dialog: document.getElementById("gameDialog"),
-  dialogBody: document.getElementById("dialogBody")
+  dialogBody: document.getElementById("dialogBody"),
+  refreshNow: document.getElementById("refreshNow"),
+  refreshStatus: document.getElementById("refreshStatus")
 };
 
 function startOfDay(date) {
@@ -372,11 +374,13 @@ async function fetchGames() {
     state.dataTimestamp = timestamps.length ? new Date(Math.max(...timestamps.map((value) => value.getTime()))) : null;
     if (!state.dataTimestamp && payload.data_updated_at) state.dataTimestamp = new Date(payload.data_updated_at);
     state.sourceState = "ready";
+    dom.refreshStatus.textContent = `마지막 확인 ${formatTime(state.loadedAt)}`;
   } catch (error) {
     console.error("KBO data request failed", error);
     state.games = [];
     state.loadedAt = new Date();
     state.sourceState = "error";
+    dom.refreshStatus.textContent = "갱신 실패 · 이전 데이터를 확인하세요";
   }
   renderAll();
 }
@@ -398,11 +402,14 @@ async function refreshLiveData() {
     const payload = await response.json();
     const rows = Array.isArray(payload) ? payload : (payload.games || []);
     if (!rows.length) return;
-    state.games = rows.map(normalizeGame);
+    const refreshedGames = rows.map(normalizeGame);
+    const refreshedById = new Map(refreshedGames.map((game) => [game.game_id, game]));
+    state.games = state.games.map((game) => refreshedById.get(game.game_id) || game);
     state.loadedAt = new Date();
     const timestamps = rows.map((row) => row.source_updated_at || row.ingested_at).filter(Boolean).map((value) => new Date(value)).filter((value) => !Number.isNaN(value.getTime()));
     state.dataTimestamp = timestamps.length ? new Date(Math.max(...timestamps.map((value) => value.getTime()))) : state.dataTimestamp;
     state.sourceState = "ready";
+    dom.refreshStatus.textContent = `마지막 확인 ${formatTime(state.loadedAt)}`;
     renderAll();
     if (state.selectedGameId && dom.dialog.open) {
       const selected = state.games.find((game) => game.game_id === state.selectedGameId);
@@ -835,3 +842,11 @@ document.getElementById("shareGame").addEventListener("click", async () => {
 
 fetchGames();
 liveRefreshTimer = setInterval(refreshLiveData, 60 * 1000);
+dom.refreshNow.addEventListener("click", async () => {
+  dom.refreshNow.disabled = true;
+  dom.refreshNow.textContent = "갱신 중…";
+  dom.refreshStatus.textContent = "최신 경기 데이터를 확인하는 중";
+  await fetchGames();
+  dom.refreshNow.disabled = false;
+  dom.refreshNow.textContent = "지금 새로고침";
+});
