@@ -360,7 +360,7 @@ async function fetchIngestionStatus() {
   }
 }
 
-async function fetchGames() {
+async function fetchGames({ force = false } = {}) {
   renderLoading();
   if (demoMode) {
     state.games = makeDemoMatches().map(normalizeGame);
@@ -373,7 +373,7 @@ async function fetchGames() {
 
   try {
     const [response] = await Promise.all([
-      fetch(`${API_URL}?from=${encodeURIComponent(toISODate(addDays(today, -120)))}&to=${encodeURIComponent(toISODate(addDays(today, 180)))}`),
+      fetch(`${API_URL}?from=${encodeURIComponent(toISODate(addDays(today, -120)))}&to=${encodeURIComponent(toISODate(addDays(today, 180)))}`, force ? { cache: "no-store" } : undefined),
       fetchTicketPolicies(),
       fetchIngestionStatus()
     ]);
@@ -879,7 +879,7 @@ dom.refreshNow.addEventListener("click", async () => {
   dom.refreshNow.disabled = true;
   dom.refreshNow.textContent = "갱신 중…";
   dom.refreshStatus.textContent = "최신 경기 데이터를 확인하는 중";
-  await fetchGames();
+  await fetchGames({ force: true });
   dom.refreshNow.disabled = false;
   dom.refreshNow.textContent = "지금 새로고침";
 });
