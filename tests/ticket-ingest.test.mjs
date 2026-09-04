@@ -17,8 +17,14 @@ test("normalizes official per-game ticket data", () => {
   assert.deepEqual(normalizeTicketInfo(valid), valid);
 });
 
+test("accepts the official SSG ticket host", () => {
+  const ssg = { ...valid, home: "SSG", sourceUrl: "https://ticket.ssg.com/ticket" };
+  assert.deepEqual(normalizeTicketInfo(ssg), ssg);
+});
+
 test("rejects invalid teams, timestamps, and source hosts", () => {
   assert.equal(normalizeTicketInfo({ ...valid, home: "없는팀" }), null);
   assert.equal(normalizeTicketInfo({ ...valid, opensAt: "soon" }), null);
   assert.equal(normalizeTicketInfo({ ...valid, sourceUrl: "https://example.com/" }), null);
+  assert.equal(normalizeTicketInfo({ ...valid, sourceUrl: "https://ticket.ssg.com.example.com/" }), null);
 });

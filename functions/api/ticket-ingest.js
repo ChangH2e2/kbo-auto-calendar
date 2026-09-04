@@ -1,5 +1,6 @@
 const VALID_TEAMS = new Set(["KIA", "KT", "LG", "NC", "SSG", "두산", "롯데", "삼성", "키움", "한화"]);
 const VALID_STATES = new Set(["scheduled", "open", "closed", "sold_out"]);
+const VALID_SOURCE_HOSTS = new Set(["ticketlink.co.kr", "www.ticketlink.co.kr", "ticket.ssg.com"]);
 const MAX_TICKETS = 300;
 
 function isIsoTimestamp(value) {
@@ -12,7 +13,7 @@ export function normalizeTicketInfo(ticket) {
   if (!VALID_TEAMS.has(ticket.away) || !VALID_TEAMS.has(ticket.home) || !VALID_STATES.has(ticket.state)) return null;
   let sourceUrl;
   try { sourceUrl = new URL(ticket.sourceUrl); } catch { return null; }
-  if (sourceUrl.protocol !== "https:" || !["ticketlink.co.kr", "www.ticketlink.co.kr"].includes(sourceUrl.hostname)) return null;
+  if (sourceUrl.protocol !== "https:" || !VALID_SOURCE_HOSTS.has(sourceUrl.hostname)) return null;
   const opensAt = ticket.opensAt == null ? null : ticket.opensAt;
   if (opensAt !== null && !isIsoTimestamp(opensAt)) return null;
   if (!isIsoTimestamp(ticket.checkedAt)) return null;
@@ -27,10 +28,20 @@ export function normalizeTicketInfo(ticket) {
   };
 }
 
+async function verifyToken(actual, expected) {
+  if (!actual || !expected) return false;
+  const encoder = new TextEncoder();
+  const [actualHash, expectedHash] = await Promise.all([
+    crypto.subtle.digest("SHA-256", encoder.encode(actual)),
+    crypto.subtle.digest("SHA-256", encoder.encode(expected))
+  ]);
+  return crypto.subtle.timingSafeEqual(actualHash, expectedHash);
+}
+
 export async function onRequestPost(context) {
   const expected = context.env.INGEST_TOKEN;
   const actual = (context.request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
-  if (!expected || actual !== expected) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!await verifyToken(actual, expected)) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   let body;
   try { body = await context.request.json(); } catch { return Response.json({ error: "Invalid JSON" }, { status: 400 }); }
