@@ -17,11 +17,24 @@ KBO_HEADERS = {
 COLLECT_DETAILS = os.environ.get("KBO_COLLECT_DETAILS", "0") == "1"
 DETAIL_WINDOW_DAYS = int(os.environ.get("KBO_DETAIL_WINDOW_DAYS", "14"))
 
+def fixed_holidays(year):
+    """API 키가 없어도 표시할 수 있는 양력 법정 공휴일의 최소 목록."""
+    return {
+        f"{year}-01-01": "신정",
+        f"{year}-03-01": "삼일절",
+        f"{year}-05-05": "어린이날",
+        f"{year}-06-06": "현충일",
+        f"{year}-08-15": "광복절",
+        f"{year}-10-03": "개천절",
+        f"{year}-10-09": "한글날",
+        f"{year}-12-25": "성탄절",
+    }
+
 def get_holidays(year):
     """대체 공휴일을 포함한 공휴일 정보 수집"""
-    holidays = {}
+    holidays = fixed_holidays(year)
     if not HOLIDAY_API_KEY:
-        print("ℹ️ HOLIDAY_API_KEY가 없어 공휴일 보강을 건너뜁니다.")
+        print("ℹ️ HOLIDAY_API_KEY가 없어 양력 공휴일 기본 목록만 사용합니다.")
         return holidays
 
     # 공휴일(getRestDeInfo) API는 대체 공휴일을 포함하여 반환합니다.

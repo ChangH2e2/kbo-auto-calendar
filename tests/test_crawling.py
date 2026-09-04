@@ -20,9 +20,11 @@ class FakeResponse:
 
 
 class CrawlingTests(unittest.TestCase):
-    def test_holidays_are_optional_without_api_key(self):
+    def test_holidays_keep_fixed_dates_without_api_key(self):
         with patch.object(crawling, "HOLIDAY_API_KEY", ""), patch.object(crawling.requests, "get") as get:
-            self.assertEqual(crawling.get_holidays("2026"), {})
+            holidays = crawling.get_holidays("2026")
+            self.assertEqual(holidays["2026-05-05"], "어린이날")
+            self.assertEqual(holidays["2026-10-09"], "한글날")
             get.assert_not_called()
 
     def test_detail_collection_only_includes_recent_past_games(self):

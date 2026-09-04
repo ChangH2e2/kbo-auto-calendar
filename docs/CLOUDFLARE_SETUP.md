@@ -65,4 +65,4 @@ ingest한다.
 Pages 프로젝트 생성 후 환경변수 `INGEST_TOKEN`을 등록하고, GitHub 저장소 Secrets에
 `KBO_INGEST_URL` (Pages 주소)와 동일한 토큰인 `KBO_INGEST_TOKEN`을 등록하면 매일
 06:00 KST 스케줄이 크롤러 결과를 D1에 upsert한다. 공휴일 표기가 필요하면 공공데이터포털의
-새 서비스 키를 `HOLIDAY_API_KEY` Secret으로 추가한다. 이 값이 없어도 경기 수집은 정상 동작한다.
+새 서비스 키를 `HOLIDAY_API_KEY` Secret으로 추가한다. 이 값이 없어도 경기 수집은 정상 동작하며 양력 기본 공휴일 목록을 사용한다. 설·추석과 대체 공휴일까지 정확히 보강하려면 공공데이터포털 특일 정보 API 키를 GitHub Actions Secret으로 등록한다.
