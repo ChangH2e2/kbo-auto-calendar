@@ -20,7 +20,7 @@ const DEFAULT_TICKET_RULES = {
   삼성: { vendor: "티켓링크", url: "https://ticketlink.co.kr/", daysBefore: 7, openTime: "11:00" },
   한화: { vendor: "티켓링크", url: "https://ticketlink.co.kr/", daysBefore: 7, openTime: "11:00" },
   NC: { vendor: "NC 다이노스", url: "https://ticket.ncdinos.com/", daysBefore: 7, openTime: "11:00", requiresLogin: true },
-  롯데: { vendor: "롯데 자이언츠", url: "https://ticket.giantsclub.com/", daysBefore: 7, openTime: "14:00" },
+  롯데: { vendor: "롯데 자이언츠", url: "https://ticket.giantsclub.com/", daysBefore: 14, openTime: "14:00", requiresLogin: true },
   SSG: { vendor: "SSG.COM", url: "https://ticket.ssg.com/ticket", daysBefore: 7, openTime: "11:00" }
 };
 
