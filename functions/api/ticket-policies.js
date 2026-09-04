@@ -27,7 +27,7 @@ export async function onRequestGet(context) {
       general_days_before, general_open_time, requires_login, presale_description, verified_at
       FROM ticket_policies ORDER BY team_id`).all();
     const policies = (result.results || []).map(normalizeTicketPolicy).filter(Boolean);
-    return Response.json({ policies }, { headers: { "Cache-Control": "public, max-age=300, s-maxage=3600" } });
+    return Response.json({ policies }, { headers: { "Cache-Control": "public, max-age=300, s-maxage=300" } });
   } catch (error) {
     console.error(JSON.stringify({ event: "ticket_policies_read_failed", message: error instanceof Error ? error.message : String(error) }));
     return Response.json({ error: "예매 정책 조회에 실패했습니다." }, { status: 500 });

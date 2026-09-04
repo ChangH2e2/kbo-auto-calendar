@@ -318,7 +318,7 @@ async function fetchTicketPolicies() {
     const policies = Array.isArray(payload?.policies) ? payload.policies : [];
     const remoteRules = Object.fromEntries(policies
       .filter((policy) => TEAMS.includes(policy.team) && policy.vendor && policy.url)
-      .map((policy) => [policy.team, policy]));
+      .map((policy) => [policy.team, { ...DEFAULT_TICKET_RULES[policy.team], ...policy }]));
     state.ticketRules = { ...DEFAULT_TICKET_RULES, ...remoteRules };
   } catch (error) {
     console.warn("Ticket policy request failed; using bundled defaults", error);
