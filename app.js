@@ -651,6 +651,11 @@ function renderAll() {
 document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => setActiveView(button.dataset.view)));
 document.getElementById("sidebarTeamButton").addEventListener("click", () => setActiveView("settings"));
 document.getElementById("mobileTeamButton").addEventListener("click", () => setActiveView("settings"));
+document.getElementById("resetPreferences").addEventListener("click", () => {
+  localStorage.removeItem("kbo-favorite-team");
+  state.favoriteTeam = "LG";
+  renderAll();
+});
 document.getElementById("teamScopeFilter").addEventListener("click", (event) => {
   const button = event.target.closest("[data-scope]");
   if (!button) return;
