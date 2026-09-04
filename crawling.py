@@ -16,6 +16,7 @@ KBO_HEADERS = {
 }
 COLLECT_DETAILS = os.environ.get("KBO_COLLECT_DETAILS", "0") == "1"
 DETAIL_WINDOW_DAYS = int(os.environ.get("KBO_DETAIL_WINDOW_DAYS", "14"))
+NAVER_LIVE = os.environ.get("KBO_NAVER_LIVE", "0") == "1"
 KST = datetime.timezone(datetime.timedelta(hours=9))
 
 def korea_today():
@@ -178,6 +179,70 @@ def get_boxscore_details(game_id):
 
     return hitter_details, pitcher_details
 
+def normalize_naver_polling(game, polling):
+    """네이버 game-polling 응답을 기존 ingest 행의 부분 업데이트로 변환한다."""
+    if not isinstance(game, dict) or not isinstance(polling, dict):
+        return {}
+    if polling.get("cancel") or polling.get("suspended"):
+        return {"is_cancel": True, "status": "cancelled", "status_note": polling.get("statusInfo") or "경기취소"}
+    status_code = str(polling.get("statusCode") or "").upper()
+    result = {}
+    if status_code in {"INGAME", "IN_PROGRESS", "PLAYING", "LIVE"}:
+        result["status"] = "live"
+    elif status_code in {"RESULT", "FINAL", "END"}:
+        result["status"] = "final"
+    if polling.get("homeTeamScore") is not None:
+        result["home_score"] = polling.get("homeTeamScore")
+    if polling.get("awayTeamScore") is not None:
+        result["away_score"] = polling.get("awayTeamScore")
+    for side in ("home", "away"):
+        values = polling.get(f"{side}TeamScoreByInning")
+        if isinstance(values, list) and values:
+            result[f"{side}_line"] = "|".join(str(value) for value in values)
+        rhe = polling.get(f"{side}TeamRheb")
+        if isinstance(rhe, list) and rhe:
+            result[f"{side}_rheb"] = "|".join(str(value) for value in rhe)
+    if polling.get("statusInfo"):
+        result["status_note"] = polling["statusInfo"]
+    return result
+
+def enrich_with_naver_live(all_results):
+    """오늘 경기만 네이버 game-polling으로 보강한다. 실패 시 원본을 보존한다."""
+    if not NAVER_LIVE:
+        return all_results
+    today = korea_today().isoformat()
+    targets = [game for game in all_results if game.get("date") == today and not game.get("is_cancel")]
+    if not targets:
+        return all_results
+    try:
+        response = requests.get(
+            "https://api-gw.sports.naver.com/schedule/games",
+            params={"fromDate": today, "toDate": today, "categoryId": "kbo"},
+            headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"}, timeout=8)
+        response.raise_for_status()
+        naver_games = response.json().get("result", {}).get("games", [])
+    except Exception as exc:
+        print(f"네이버 일정 보강 실패: {exc}")
+        return all_results
+    by_teams = {(g.get("away"), g.get("home")): g for g in targets}
+    for naver_game in naver_games:
+        key = (naver_game.get("awayTeamName"), naver_game.get("homeTeamName"))
+        target = by_teams.get(key)
+        naver_id = naver_game.get("gameId")
+        if not target or not naver_id:
+            continue
+        try:
+            poll = requests.get(
+                f"https://api-gw.sports.naver.com/schedule/games/{naver_id}/game-polling",
+                headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"}, timeout=5)
+            poll.raise_for_status()
+            update = normalize_naver_polling(target, poll.json().get("result", {}).get("game", {}))
+            target.update({key: value for key, value in update.items() if value is not None})
+            target["naver_game_id"] = naver_id
+        except Exception as exc:
+            print(f"네이버 경기 보강 실패 ({naver_id}): {exc}")
+    return all_results
+
 def get_kbo_data():
     now = datetime.datetime.now(KST)
     current_year = str(now.year)
@@ -277,7 +342,7 @@ def get_kbo_data():
                         "status_note": remark_text.strip() if is_cancel and remark_text.strip() else None,
                         "holiday_name": holidays.get(full_date)
                     })
-    return all_results
+    return enrich_with_naver_live(all_results)
 
 if __name__ == "__main__":
     data = get_kbo_data()

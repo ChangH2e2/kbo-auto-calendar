@@ -32,4 +32,6 @@ jobs:
           # 오늘 경기의 이닝·선수 상태를 실시간에 가깝게 보강한다.
           KBO_COLLECT_DETAILS: '1'
           KBO_DETAIL_WINDOW_DAYS: '0'
+          # 네이버 game-polling으로 오늘 경기 점수·이닝·상태를 보강한다.
+          KBO_NAVER_LIVE: '1'
         run: python crawling.py

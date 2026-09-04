@@ -66,6 +66,19 @@ class CrawlingTests(unittest.TestCase):
         self.assertEqual(away_rheb, "1|4|0|2")
         self.assertEqual(home_rheb, "2|5|1|3")
 
+    def test_normalize_naver_polling_live_score_and_innings(self):
+        update = crawling.normalize_naver_polling({}, {
+            "statusCode": "INGAME", "statusInfo": "6회초",
+            "awayTeamScore": 3, "homeTeamScore": 2,
+            "awayTeamScoreByInning": ["0", "1", "2"],
+            "homeTeamScoreByInning": ["1", "0", "1"],
+            "awayTeamRheb": [3, 7, 0, 1], "homeTeamRheb": [2, 5, 1, 0],
+        })
+        self.assertEqual(update["status"], "live")
+        self.assertEqual(update["away_score"], 3)
+        self.assertEqual(update["away_line"], "0|1|2")
+        self.assertEqual(update["home_rheb"], "2|5|1|0")
+
 
 if __name__ == "__main__":
     unittest.main()
