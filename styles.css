@@ -215,6 +215,8 @@ button:active { transform: translateY(1px); }
 .row-state.postponed { padding: 5px 7px; border: 1px dashed var(--amber); border-radius: 8px; color: var(--amber); }
 .freshness { margin: -12px 2px 0; color: var(--ink-faint); font-size: 12px; text-align: right; }
 .refresh-row { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 8px 16px 0; color: var(--ink-faint); font-size: 11px; }
+.connection-status { color: var(--accent); font-weight: 800; }
+.connection-status.is-offline { color: var(--danger); }
 .refresh-button { min-height: 34px; border: 1px solid var(--line-strong); border-radius: 8px; padding: 0 10px; background: var(--surface); color: var(--ink-soft); font-size: 12px; font-weight: 750; cursor: pointer; }
 .refresh-button:hover { border-color: var(--accent); color: var(--accent); }
 .refresh-button:disabled { cursor: wait; opacity: .6; }

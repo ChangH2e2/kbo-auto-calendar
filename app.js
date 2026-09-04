@@ -69,6 +69,7 @@ const dom = {
   dialogBody: document.getElementById("dialogBody"),
   refreshNow: document.getElementById("refreshNow"),
   refreshStatus: document.getElementById("refreshStatus"),
+  connectionStatus: document.getElementById("connectionStatus"),
   installApp: document.getElementById("installApp")
 };
 
@@ -858,6 +859,14 @@ dom.installApp.addEventListener("click", async () => {
   deferredInstallPrompt = null;
   dom.installApp.hidden = true;
 });
+function renderConnectionStatus() {
+  const isOnline = navigator.onLine;
+  dom.connectionStatus.textContent = isOnline ? "온라인" : "오프라인 · 저장된 데이터";
+  dom.connectionStatus.classList.toggle("is-offline", !isOnline);
+}
+window.addEventListener("online", renderConnectionStatus);
+window.addEventListener("offline", renderConnectionStatus);
+renderConnectionStatus();
 document.getElementById("teamScopeFilter").addEventListener("click", (event) => {
   const button = event.target.closest("[data-scope]");
   if (!button) return;
