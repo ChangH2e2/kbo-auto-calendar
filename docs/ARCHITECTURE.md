@@ -51,7 +51,7 @@ Cloudflare Pages 정적 웹 앱
 
 - Python 수집 로직은 프런트엔드와 분리
 - 장시간 외부 API 호출 때문에 Edge Function보다 독립 실행 워커를 우선
-- 일정·점수 갱신: `.github/workflows/daily_update.yml` (10분 주기)
+- 일정·점수 갱신: `.github/workflows/daily_update.yml` (10분 주기, 오늘 경기 상세 포함)
 - 최근 상세 기록 보강: `.github/workflows/detail_update.yml` (최근 14일)
 - 두 workflow 모두 `/api/ingest`에 upsert하며 실패 시 로그에 원인을 남김
 - 공식 예매처의 경기별 상태는 신선도 12시간 안에서만 확정값으로 사용

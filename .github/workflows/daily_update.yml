@@ -29,5 +29,7 @@ jobs:
           KBO_INGEST_URL: ${{ secrets.KBO_INGEST_URL }}
           KBO_INGEST_TOKEN: ${{ secrets.KBO_INGEST_TOKEN }}
           HOLIDAY_API_KEY: ${{ secrets.HOLIDAY_API_KEY }}
-          KBO_COLLECT_DETAILS: '0'
+          # 오늘 경기의 이닝·선수 상태를 실시간에 가깝게 보강한다.
+          KBO_COLLECT_DETAILS: '1'
+          KBO_DETAIL_WINDOW_DAYS: '0'
         run: python crawling.py
