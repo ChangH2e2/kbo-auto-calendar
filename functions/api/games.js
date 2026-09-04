@@ -10,8 +10,11 @@ export async function onRequestGet(context) {
   if (status && ALLOWED_STATUSES.has(status)) { params.push(status); where += " AND status = ?3"; }
   const query = `SELECT id AS game_id, starts_at, date, time, away_team AS away, home_team AS home,
     venue AS stadium, status, away_score, home_score, status_note, away_line, home_line,
-    away_rheb, home_rheb, hitter_details, pitcher_details, holiday_name, source_updated_at, ingested_at
-    FROM games WHERE ${where} ORDER BY starts_at ASC`;
+    away_rheb, home_rheb, hitter_details, pitcher_details, holiday_name, source_updated_at, ingested_at,
+    ticket.state AS ticket_state, ticket.opens_at AS ticket_opens_at,
+    ticket.source_url AS ticket_source_url, ticket.checked_at AS ticket_checked_at
+    FROM games LEFT JOIN game_ticket_info AS ticket ON ticket.game_id = games.id
+    WHERE ${where} ORDER BY starts_at ASC`;
   try {
     const result = await context.env.KBO_DB.prepare(query).bind(...params).all();
     return Response.json({ games: result.results || [], data_updated_at: new Date().toISOString() }, {

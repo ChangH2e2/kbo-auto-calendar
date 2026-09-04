@@ -158,22 +158,60 @@ function scoreText(game) {
 function getTicket(game) {
   const rule = state.ticketRules[game.home] || DEFAULT_TICKET_RULES.LG;
   const gameDate = parseGameDate(game);
-  const openAt = addDays(startOfDay(gameDate), -rule.daysBefore);
+  const estimatedOpenAt = addDays(startOfDay(gameDate), -rule.daysBefore);
   const [openHour = 11, openMinute = 0] = String(rule.openTime || `${rule.hour || 11}:00`).split(":").map(Number);
-  openAt.setHours(openHour, openMinute, 0, 0);
-  const isOpen = Date.now() >= openAt.getTime() && Date.now() < gameDate.getTime();
-  return { ...rule, openAt, gameDate, isOpen };
+  estimatedOpenAt.setHours(openHour, openMinute, 0, 0);
+  const checkedAt = game.ticket_checked_at ? new Date(game.ticket_checked_at) : null;
+  const hasFreshOfficialState = ["scheduled", "open", "closed", "sold_out"].includes(game.ticket_state)
+    && checkedAt && !Number.isNaN(checkedAt.getTime()) && Date.now() - checkedAt.getTime() <= 12 * 60 * 60 * 1000;
+  const officialOpenAt = game.ticket_opens_at ? new Date(game.ticket_opens_at) : null;
+  const openAt = hasFreshOfficialState && officialOpenAt && !Number.isNaN(officialOpenAt.getTime()) ? officialOpenAt : estimatedOpenAt;
+  const isOpen = hasFreshOfficialState ? game.ticket_state === "open" : Date.now() >= openAt.getTime() && Date.now() < gameDate.getTime();
+  return {
+    ...rule, openAt, gameDate, isOpen,
+    isOfficial: Boolean(hasFreshOfficialState),
+    officialState: hasFreshOfficialState ? game.ticket_state : null,
+    officialSourceUrl: hasFreshOfficialState ? game.ticket_source_url : null,
+    checkedAt: hasFreshOfficialState ? checkedAt : null
+  };
 }
 
 function ticketSourceText(ticket) {
-  try { return `${ticket.vendor} · ${new URL(ticket.url).hostname.replace(/^www\./, "")}`; }
+  try { return `${ticket.vendor} · ${new URL(ticket.officialSourceUrl || ticket.url).hostname.replace(/^www\./, "")}`; }
   catch { return ticket.vendor || "공식 예매처"; }
 }
 
 function getTicketState(ticket) {
+  if (ticket.isOfficial) return ticket.officialState;
   if (ticket.isOpen) return "open";
   const hoursUntilOpen = (ticket.openAt.getTime() - Date.now()) / 3600000;
   return hoursUntilOpen > 0 && hoursUntilOpen <= 24 ? "soon" : "upcoming";
+}
+
+function ticketHeading(ticket, ticketState) {
+  if (ticket.isOfficial) {
+    if (ticketState === "open") return "예매 중";
+    if (ticketState === "sold_out") return "매진 확인";
+    if (ticketState === "closed") return "예매 종료";
+    return "예매 오픈까지";
+  }
+  return ticketState === "open" ? "예매 가능 예상" : ticketState === "soon" ? "예매 오픈 임박" : "예매 오픈 예상까지";
+}
+
+function ticketTimeText(ticket, openText) {
+  if (ticket.isOfficial && ticket.officialState === "open") return "공식 예매처에서 현재 판매 상태 확인됨";
+  if (ticket.isOfficial && ["closed", "sold_out"].includes(ticket.officialState)) return "공식 예매처에서 현재 상태 확인됨";
+  return `${ticket.isOfficial ? "" : "일반 기준 "}${openText} 오픈 ${ticket.isOfficial ? "예정" : "예상"}`;
+}
+
+function ticketSourceDetail(ticket) {
+  const checked = ticket.checkedAt ? ` · ${formatKoreanDate(ticket.checkedAt, { month: "numeric", weekday: undefined })} ${formatTime(ticket.checkedAt)} 확인` : "";
+  return `${ticketSourceText(ticket)}${checked}`;
+}
+
+function ticketDisclaimer(ticket) {
+  if (ticket.isOfficial) return "공식 예매처 공개 경기 목록에서 확인한 정보입니다. 판매 상태는 예매처에서 최종 확인해 주세요.";
+  return ticket.description || "일반 일정 참고값이며 경기별 구단·예매처 공지를 우선합니다.";
 }
 
 function getFilteredGames() {
@@ -377,6 +415,7 @@ function renderNextGame() {
 
   const ticket = getTicket(game);
   const ticketState = getTicketState(ticket);
+  const shouldCountdown = !ticket.isOpen && (!ticket.isOfficial || ticket.officialState === "scheduled");
   const openText = new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(ticket.openAt);
   dom.nextGame.innerHTML = `
     <article class="next-game-card">
@@ -397,10 +436,10 @@ function renderNextGame() {
       <div class="game-meta"><strong>${escapeHtml(game.stadium)}</strong>${game.broadcast ? ` / ${escapeHtml(game.broadcast)}` : ""}</div>
       ${game.home === state.favoriteTeam ? `
         <div class="ticket-panel ticket-${ticketState}" aria-label="예매 안내">
-          <div class="ticket-head"><strong>${ticketState === "open" ? "예매 가능 예상" : ticketState === "soon" ? "예매 오픈 임박" : "예매 오픈 예상까지"}</strong><span class="countdown" data-countdown="${ticket.openAt.toISOString()}">${ticketState === "open" ? "공식 예매처 확인 필요" : "계산 중"}</span></div>
-          <p class="ticket-absolute">일반 기준 ${escapeHtml(openText)} 오픈 예상</p>
-          <p class="ticket-source">${escapeHtml(ticketSourceText(ticket))}</p>
-          <p class="ticket-disclaimer">${escapeHtml(ticket.description || "일반 일정 참고값이며 경기별 구단·예매처 공지를 우선합니다.")}</p>
+          <div class="ticket-head"><strong>${escapeHtml(ticketHeading(ticket, ticketState))}</strong><span class="countdown"${shouldCountdown ? ` data-countdown="${ticket.openAt.toISOString()}"` : ""}>${ticket.isOfficial && ticket.officialState !== "scheduled" ? "공식 상태 확인됨" : ticket.isOpen ? "공식 예매처 확인 필요" : "계산 중"}</span></div>
+          <p class="ticket-absolute">${escapeHtml(ticketTimeText(ticket, openText))}</p>
+          <p class="ticket-source">${escapeHtml(ticketSourceDetail(ticket))}</p>
+          <p class="ticket-disclaimer">${escapeHtml(ticketDisclaimer(ticket))}</p>
           <a class="${ticket.isOpen ? "primary-button" : "secondary-button"}" href="${escapeHtml(ticket.url)}" target="_blank" rel="noopener noreferrer">공식 예매처에서 확인</a>
         </div>` : ""}
     </article>`;
@@ -600,7 +639,7 @@ function detailContentHtml(game, status) {
     const ticket = getTicket(game);
     const ticketState = getTicketState(ticket);
     const openText = new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(ticket.openAt);
-    return `<section class="detail-card"><h2>예매 안내 <span class="inline-status ticket-${ticketState}">${ticketState === "open" ? "예매 가능 예상" : ticketState === "soon" ? "오픈 임박" : "오픈 전"}</span></h2><div class="detail-tab-panel"><p>일반 기준 ${escapeHtml(openText)} 오픈 예상</p><p class="ticket-source">${escapeHtml(ticketSourceText(ticket))}</p><p class="ticket-disclaimer">${escapeHtml(ticket.description || "일반 일정 참고값이며 경기별 구단·예매처 공지를 우선합니다.")}</p><a class="${ticket.isOpen ? "primary-button" : "secondary-button"}" href="${escapeHtml(ticket.url)}" target="_blank" rel="noopener noreferrer">공식 예매처에서 확인</a></div></section>`;
+    return `<section class="detail-card"><h2>예매 안내 <span class="inline-status ticket-${ticketState}">${escapeHtml(ticketHeading(ticket, ticketState))}</span></h2><div class="detail-tab-panel"><p>${escapeHtml(ticketTimeText(ticket, openText))}</p><p class="ticket-source">${escapeHtml(ticketSourceDetail(ticket))}</p><p class="ticket-disclaimer">${escapeHtml(ticketDisclaimer(ticket))}</p><a class="${ticket.isOpen ? "primary-button" : "secondary-button"}" href="${escapeHtml(ticket.url)}" target="_blank" rel="noopener noreferrer">공식 예매처에서 확인</a></div></section>`;
   }
   if (["cancelled", "postponed"].includes(status)) return `<section class="detail-card"><div class="detail-tab-panel"><p>${escapeHtml(detailNote(game, status))}</p><p class="detail-empty">새 일정이 확인되면 이 화면에 반영됩니다.</p></div></section>`;
   return `

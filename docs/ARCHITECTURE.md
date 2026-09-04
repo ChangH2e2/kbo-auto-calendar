@@ -19,7 +19,7 @@ Cloudflare Pages Functions
         │ D1 binding KBO_DB
         ▼
 Cloudflare D1 (SQLite)
-  games / game_innings / teams / ticket_policies / ingestion_runs
+  games / game_innings / teams / ticket_policies / game_ticket_info / ingestion_runs
         │
         ▼
 Cloudflare Pages 정적 웹 앱
@@ -44,6 +44,7 @@ Cloudflare Pages 정적 웹 앱
 - 브라우저는 Pages Function의 읽기 API만 호출
 - D1 binding은 Pages 런타임에서만 접근
 - ingest API는 `INGEST_TOKEN`으로 보호
+- 경기별 예매 상태 ingest도 동일한 토큰으로 보호하고 공식 HTTPS 출처만 허용
 - D1 자격증명과 토큰은 브라우저 번들에 포함하지 않음
 
 ### 수집 실행
@@ -53,6 +54,7 @@ Cloudflare Pages 정적 웹 앱
 - 일정·점수 갱신: `.github/workflows/daily_update.yml`
 - 최근 상세 기록 보강: `.github/workflows/detail_update.yml` (최근 14일)
 - 두 workflow 모두 `/api/ingest`에 upsert하며 실패 시 로그에 원인을 남김
+- 공식 예매처의 경기별 상태는 신선도 12시간 안에서만 확정값으로 사용
 
 ## 3. 데이터 모델
 
