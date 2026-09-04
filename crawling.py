@@ -190,6 +190,7 @@ def normalize_naver_polling(game, polling):
     if status_code in {"BEFORE", "SCHEDULED", "PREVIEW"}:
         result.update({"status": "scheduled", "home_score": None, "away_score": None,
                        "home_line": None, "away_line": None, "home_rheb": None, "away_rheb": None})
+        return result
     elif status_code in {"INGAME", "IN_PROGRESS", "PLAYING", "LIVE"}:
         result["status"] = "live"
     elif status_code in {"RESULT", "FINAL", "END"}:
