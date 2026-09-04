@@ -9,6 +9,13 @@ export function latestGameDataTimestamp(games = []) {
   return timestamps.length ? new Date(Math.max(...timestamps)).toISOString() : null;
 }
 
+export function inferLiveStatus(game, now = Date.now()) {
+  if (!game || game.status !== "scheduled") return game?.status || null;
+  const startsAt = new Date(game.starts_at).getTime();
+  if (!Number.isFinite(startsAt)) return game.status;
+  return startsAt <= now && now <= startsAt + 5 * 60 * 60 * 1000 ? "live" : game.status;
+}
+
 export async function onRequestGet(context) {
   const url = new URL(context.request.url);
   const from = /^\d{4}-\d{2}-\d{2}$/.test(url.searchParams.get("from") || "") ? url.searchParams.get("from") : "0000-01-01";
@@ -27,7 +34,8 @@ export async function onRequestGet(context) {
   try {
     const result = await context.env.KBO_DB.prepare(query).bind(...params).all();
     const games = result.results || [];
-    return Response.json({ games, data_updated_at: latestGameDataTimestamp(games) }, {
+    const responseGames = games.map((game) => ({ ...game, status: inferLiveStatus(game) }));
+    return Response.json({ games: responseGames, data_updated_at: latestGameDataTimestamp(games) }, {
       headers: { "Cache-Control": "public, max-age=30, s-maxage=60" }
     });
   } catch (error) {
