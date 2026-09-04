@@ -16,6 +16,10 @@ KBO_HEADERS = {
 }
 COLLECT_DETAILS = os.environ.get("KBO_COLLECT_DETAILS", "0") == "1"
 DETAIL_WINDOW_DAYS = int(os.environ.get("KBO_DETAIL_WINDOW_DAYS", "14"))
+KST = datetime.timezone(datetime.timedelta(hours=9))
+
+def korea_today():
+    return datetime.datetime.now(KST).date()
 
 def fixed_holidays(year):
     """API 키가 없어도 표시할 수 있는 양력 법정 공휴일의 최소 목록."""
@@ -62,7 +66,7 @@ def get_holidays(year):
 
 def should_collect_details(game_date, today=None):
     """종료된 최근 경기만 상세 API 수집 대상으로 제한합니다."""
-    today = today or datetime.date.today()
+    today = today or korea_today()
     age_days = (today - datetime.date.fromisoformat(game_date)).days
     return 0 <= age_days <= DETAIL_WINDOW_DAYS
 
@@ -175,7 +179,7 @@ def get_boxscore_details(game_id):
     return hitter_details, pitcher_details
 
 def get_kbo_data():
-    now = datetime.datetime.now()
+    now = datetime.datetime.now(KST)
     current_year = str(now.year)
     all_results = []
     holidays = get_holidays(current_year)

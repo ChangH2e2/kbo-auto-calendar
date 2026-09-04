@@ -35,6 +35,15 @@ class CrawlingTests(unittest.TestCase):
             self.assertFalse(crawling.should_collect_details("2026-08-20", today))
             self.assertFalse(crawling.should_collect_details("2026-09-05", today))
 
+    def test_korea_today_is_timezone_aware(self):
+        expected_now = datetime.datetime(2026, 9, 5, 0, 30, tzinfo=crawling.KST)
+        class FakeDateTime:
+            @staticmethod
+            def now(tz=None):
+                return expected_now
+        with patch.object(crawling.datetime, "datetime", FakeDateTime):
+            self.assertEqual(crawling.korea_today(), datetime.date(2026, 9, 5))
+
     def test_fallback_id_keeps_cancelled_rows_without_source_id(self):
         self.assertEqual(crawling.fallback_game_id("2026-08-30", "LG", "롯데"), "20260830-LG-롯데-noid")
 
