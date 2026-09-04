@@ -266,6 +266,7 @@ button:active { transform: translateY(1px); }
 .source-status.is-healthy { color: var(--accent); }
 .source-status.is-warning { color: var(--danger); }
 .install-app-button { min-height: 42px; }
+.install-hint { margin: -8px 0 0; color: var(--ink-faint); font-size: 12px; line-height: 1.5; }
 
 .mobile-bottom-nav {
   position: fixed;
