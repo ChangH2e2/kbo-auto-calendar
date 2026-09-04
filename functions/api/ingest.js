@@ -20,6 +20,8 @@ function toRow(game) {
 }
 
 export async function onRequestPost(context) {
+  const runId = crypto.randomUUID();
+  const startedAt = new Date().toISOString();
   const expected = context.env.INGEST_TOKEN;
   const actual = (context.request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
   if (!expected || actual !== expected) return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -33,6 +35,20 @@ export async function onRequestPost(context) {
     (id,season,starts_at,date,time,away_team,home_team,venue,status,away_score,home_score,status_note,away_line,home_line,away_rheb,home_rheb,hitter_details,pitcher_details,holiday_name,source_updated_at)
     VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20)
     ON CONFLICT(id) DO UPDATE SET season=excluded.season,starts_at=excluded.starts_at,date=excluded.date,time=excluded.time,away_team=excluded.away_team,home_team=excluded.home_team,venue=excluded.venue,status=excluded.status,away_score=excluded.away_score,home_score=excluded.home_score,status_note=excluded.status_note,away_line=COALESCE(excluded.away_line,games.away_line),home_line=COALESCE(excluded.home_line,games.home_line),away_rheb=COALESCE(excluded.away_rheb,games.away_rheb),home_rheb=COALESCE(excluded.home_rheb,games.home_rheb),hitter_details=COALESCE(excluded.hitter_details,games.hitter_details),pitcher_details=COALESCE(excluded.pitcher_details,games.pitcher_details),holiday_name=COALESCE(excluded.holiday_name,games.holiday_name),source_updated_at=excluded.source_updated_at`).bind(row.id,row.season,row.starts_at,row.date,row.time,row.away_team,row.home_team,row.venue,row.status,row.away_score,row.home_score,row.status_note,row.away_line,row.home_line,row.away_rheb,row.home_rheb,row.hitter_details,row.pitcher_details,row.holiday_name,row.source_updated_at));
-  await context.env.KBO_DB.batch(statements);
+  try {
+    await context.env.KBO_DB.batch(statements);
+    await context.env.KBO_DB.prepare(`INSERT INTO ingestion_runs
+      (id, job_type, started_at, finished_at, status, fetched_count, accepted_count, rejected_count)
+      VALUES (?1, 'games', ?2, ?3, 'success', ?4, ?5, ?6)`)
+      .bind(runId, startedAt, new Date().toISOString(), incoming.length, rows.length, incoming.length - rows.length)
+      .run();
+  } catch (error) {
+    await context.env.KBO_DB.prepare(`INSERT INTO ingestion_runs
+      (id, job_type, started_at, finished_at, status, fetched_count, accepted_count, rejected_count, error_summary)
+      VALUES (?1, 'games', ?2, ?3, 'failed', ?4, 0, 0, ?5)`)
+      .bind(runId, startedAt, new Date().toISOString(), incoming.length, error instanceof Error ? error.message.slice(0, 500) : String(error).slice(0, 500))
+      .run();
+    return Response.json({ error: "경기 데이터 저장에 실패했습니다." }, { status: 500 });
+  }
   return Response.json({ accepted: rows.length, rejected: incoming.length - rows.length });
 }
