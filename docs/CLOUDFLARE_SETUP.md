@@ -25,17 +25,21 @@ Settings → Functions → D1 database bindings에서 같은 DB를 `KBO_DB` 이�
 
 `migrations/0001_initial.sql`은 로컬/CI에서 재현할 수 있는 스키마 원본이다.
 현재 Cloudflare 콘솔에서 동일 SQL을 실행해 테이블을 만들었으며, 초기 `teams` 10개도
-삽입했다. `games`는 아직 0건이므로 실제 수집 작업을 연결하기 전까지 운영 화면은
-데이터 없음 상태를 보여준다. 브라우저에서 `?demo=1`을 사용하면 샘플 화면을 확인할 수 있다.
+삽입했다. 운영 데이터는 GitHub Actions가 보호된 ingest API를 통해 D1에 upsert한다.
+브라우저에서 `?demo=1`을 사용하면 원본 API와 관계없이 샘플 화면을 확인할 수 있다.
 
 ## 다음 운영 작업
 
-`crawling.py`는 `KBO_INGEST_URL`이 있으면 보호된 D1 ingest API로 전송하고, 값이 없으면
-기존 Supabase 방식으로 동작한다. D1 자격증명은 브라우저 코드에 넣지 않는다.
+`crawling.py`는 `KBO_INGEST_URL`과 `KBO_INGEST_TOKEN`이 모두 있을 때만 보호된 D1
+ingest API로 전송한다. 설정이 없으면 성공한 것처럼 종료하지 않고 즉시 실패한다.
+D1 자격증명은 브라우저 코드에 넣지 않는다.
 
 일정 수집과 상세 기록 수집은 분리했다. `daily_update.yml`은 빠른 일정·점수 갱신을 담당하고,
 `detail_update.yml`은 최근 14일 경기의 이닝·타자·투수 기록만 6시간마다 보강한다.
+일정 수집이 상세 필드를 보내지 않아도 ingest upsert는 D1에 이미 저장된 상세 기록과
+공휴일명을 유지한다.
 
 Pages 프로젝트 생성 후 환경변수 `INGEST_TOKEN`을 등록하고, GitHub 저장소 Secrets에
 `KBO_INGEST_URL` (Pages 주소)와 동일한 토큰인 `KBO_INGEST_TOKEN`을 등록하면 매일
-06:00 KST 스케줄이 크롤러 결과를 D1에 upsert한다.
+06:00 KST 스케줄이 크롤러 결과를 D1에 upsert한다. 공휴일 표기가 필요하면 공공데이터포털의
+새 서비스 키를 `HOLIDAY_API_KEY` Secret으로 추가한다. 이 값이 없어도 경기 수집은 정상 동작한다.

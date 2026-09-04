@@ -1,15 +1,12 @@
 import requests
 from bs4 import BeautifulSoup
 import re
-from supabase import create_client
 import os
 import datetime
 import time
 import json
 
-URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
-KEY = os.environ.get("SUPABASE_KEY", "").strip()
-HOLIDAY_API_KEY = "4b4ad3442715e2758dd90b80e40e0a219d74b6ca6f870ad85cdeb8a37709e073"
+HOLIDAY_API_KEY = os.environ.get("HOLIDAY_API_KEY", "").strip()
 VALID_TEAMS = ['KIA', 'KT', 'LG', 'NC', 'SSG', '두산', '롯데', '삼성', '키움', '한화']
 KBO_HEADERS = {
     "User-Agent": "Mozilla/5.0",
@@ -23,12 +20,17 @@ DETAIL_WINDOW_DAYS = int(os.environ.get("KBO_DETAIL_WINDOW_DAYS", "14"))
 def get_holidays(year):
     """대체 공휴일을 포함한 공휴일 정보 수집"""
     holidays = {}
-    try:
-        # 공휴일(getRestDeInfo) API는 대체 공휴일을 포함하여 반환합니다.
-        for month in range(3, 12):
+    if not HOLIDAY_API_KEY:
+        print("ℹ️ HOLIDAY_API_KEY가 없어 공휴일 보강을 건너뜁니다.")
+        return holidays
+
+    # 공휴일(getRestDeInfo) API는 대체 공휴일을 포함하여 반환합니다.
+    for month in range(3, 12):
+        try:
             url = "http://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo"
             params = {'solYear': year, 'solMonth': str(month).zfill(2), 'ServiceKey': HOLIDAY_API_KEY, '_type': 'json'}
             res = requests.get(url, params=params, timeout=5)
+            res.raise_for_status()
             data = res.json()
             
             body = data.get('response', {}).get('body', {})
@@ -40,9 +42,16 @@ def get_holidays(year):
                     locdate = str(h.get('locdate'))
                     f_date = f"{locdate[:4]}-{locdate[4:6]}-{locdate[6:8]}"
                     holidays[f_date] = h.get('dateName')
-    except Exception as e:
-        print(f"⚠️ 공휴일 데이터 호출 실패: {e}")
+        except Exception as e:
+            print(f"⚠️ {month}월 공휴일 데이터 호출 실패: {e}")
     return holidays
+
+
+def should_collect_details(game_date, today=None):
+    """종료된 최근 경기만 상세 API 수집 대상으로 제한합니다."""
+    today = today or datetime.date.today()
+    age_days = (today - datetime.date.fromisoformat(game_date)).days
+    return 0 <= age_days <= DETAIL_WINDOW_DAYS
 
 def get_line_score(game_id):
     """경기 상세 이닝 점수 및 RHEB 수집 (table2, table3 파싱)"""
@@ -219,7 +228,7 @@ def get_kbo_data():
                                     a_score = int(a_score_val)
                                     h_score = int(h_score_val)
                                     if game_id:
-                                        if COLLECT_DETAILS and (datetime.date.today() - datetime.date.fromisoformat(full_date)).days <= DETAIL_WINDOW_DAYS:
+                                        if COLLECT_DETAILS and should_collect_details(full_date):
                                             h_line, a_line, h_rheb, a_rheb = get_line_score(game_id)
                                             hitters, pitchers = get_boxscore_details(game_id)
                                             time.sleep(0.2)
@@ -252,17 +261,13 @@ if __name__ == "__main__":
         raise SystemExit("KBO 원본 응답에서 경기 데이터를 찾지 못했습니다. 수집 endpoint 응답을 확인하세요.")
     ingest_url = os.environ.get("KBO_INGEST_URL", "").strip().rstrip("/")
     ingest_token = os.environ.get("KBO_INGEST_TOKEN", "").strip()
-    if data and ingest_url:
-        response = requests.post(
-            f"{ingest_url}/api/ingest",
-            json={"games": data},
-            headers={"Authorization": f"Bearer {ingest_token}"} if ingest_token else {},
-            timeout=30,
-        )
-        response.raise_for_status()
-        print(f"🎉 Cloudflare D1 업데이트 완료! (총 {len(data)}건)")
-    elif data and URL and KEY:
-        supabase = create_client(URL, KEY)
-        supabase.table("kbo_matches").delete().gte("date", "2000-01-01").execute()
-        supabase.table("kbo_matches").insert(data).execute()
-        print(f"🎉 업데이트 완료! (총 {len(data)}건)")
+    if not ingest_url or not ingest_token:
+        raise SystemExit("KBO_INGEST_URL과 KBO_INGEST_TOKEN이 모두 필요합니다.")
+    response = requests.post(
+        f"{ingest_url}/api/ingest",
+        json={"games": data},
+        headers={"Authorization": f"Bearer {ingest_token}"},
+        timeout=30,
+    )
+    response.raise_for_status()
+    print(f"🎉 Cloudflare D1 업데이트 완료! (총 {len(data)}건)")
