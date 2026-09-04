@@ -269,6 +269,7 @@ def get_kbo_data():
                         "hitter_details": hitters,   # 🌟 새로 추가 (JSONB 매핑)
                         "pitcher_details": pitchers, # 🌟 새로 추가 (JSONB 매핑)
                         "is_cancel": is_cancel,
+                        "status_note": remark_text.strip() if is_cancel and remark_text.strip() else None,
                         "holiday_name": holidays.get(full_date)
                     })
     return all_results
