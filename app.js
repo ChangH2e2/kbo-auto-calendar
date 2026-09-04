@@ -48,6 +48,7 @@ const state = {
 let countdownTimer = null;
 let liveRefreshTimer = null;
 let liveRefreshInFlight = false;
+let deferredInstallPrompt = null;
 
 const dom = {
   notice: document.getElementById("dataNotice"),
@@ -67,7 +68,8 @@ const dom = {
   dialog: document.getElementById("gameDialog"),
   dialogBody: document.getElementById("dialogBody"),
   refreshNow: document.getElementById("refreshNow"),
-  refreshStatus: document.getElementById("refreshStatus")
+  refreshStatus: document.getElementById("refreshStatus"),
+  installApp: document.getElementById("installApp")
 };
 
 function startOfDay(date) {
@@ -837,6 +839,24 @@ document.getElementById("resetPreferences").addEventListener("click", () => {
   state.hasStoredTeam = false;
   state.teamScope = "all";
   renderAll();
+});
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  dom.installApp.hidden = false;
+});
+window.addEventListener("appinstalled", () => {
+  deferredInstallPrompt = null;
+  dom.installApp.hidden = true;
+  dom.refreshStatus.textContent = "앱 설치 완료";
+});
+dom.installApp.addEventListener("click", async () => {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  const choice = await deferredInstallPrompt.userChoice;
+  if (choice.outcome === "accepted") dom.refreshStatus.textContent = "앱 설치를 시작했습니다";
+  deferredInstallPrompt = null;
+  dom.installApp.hidden = true;
 });
 document.getElementById("teamScopeFilter").addEventListener("click", (event) => {
   const button = event.target.closest("[data-scope]");
