@@ -384,9 +384,7 @@ async function fetchGames({ force = false } = {}) {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const payload = await response.json();
     const rows = Array.isArray(payload) ? payload : (payload.games || []);
-    const refreshedGames = rows.map(normalizeGame);
-    const refreshedById = new Map(refreshedGames.map((game) => [game.game_id, game]));
-    state.games = state.games.map((game) => refreshedById.get(game.game_id) || game);
+    state.games = rows.map(normalizeGame);
     state.loadedAt = new Date();
     const timestamps = rows.map((row) => row.source_updated_at || row.ingested_at).filter(Boolean).map((value) => new Date(value)).filter((value) => !Number.isNaN(value.getTime()));
     state.dataTimestamp = timestamps.length ? new Date(Math.max(...timestamps.map((value) => value.getTime()))) : null;
@@ -769,7 +767,7 @@ function scoreboardHtml(game) {
   const innings = Array.from({ length: inningCount }, (_, index) => `<th>${index + 1}</th>`).join("");
   const row = (team, line, totals) => `<tr><td class="sticky-team">${escapeHtml(team)}</td>${Array.from({ length: inningCount }, (_, index) => `<td>${escapeHtml(line[index] ?? "-")}</td>`).join("")}<td class="total-r">${escapeHtml(totals[0] ?? "-")}</td><td class="total-h">${escapeHtml(totals[1] ?? "-")}</td><td class="total-e">${escapeHtml(totals[2] ?? "-")}</td></tr>`;
   return `
-    <section class="detail-card"><h2>이닝별 득점</h2><div class="score-scroll"><table class="scoreboard"><thead><tr><th class="sticky-team">팀</th>${innings}<th class="total-r">R</th><th class="total-h">H</th><th class="total-e">E</th></tr></thead><tbody>${row(game.away, away, awayTotals)}${row(game.home, home, homeTotals)}</tbody></table></div><p class="score-hint">이닝 영역만 좌우로 스크롤할 수 있습니다.</p></section>`;
+    <section class="detail-card"><h2>이닝별 득점 <span class="inning-count">${inningCount}회</span></h2><div class="score-scroll" role="region" aria-label="이닝별 득점 표"><table class="scoreboard"><thead><tr><th class="sticky-team">팀</th>${innings}<th class="total-r">R</th><th class="total-h">H</th><th class="total-e">E</th></tr></thead><tbody>${row(game.away, away, awayTotals)}${row(game.home, home, homeTotals)}</tbody></table></div><p class="score-hint">전체 이닝과 R·H·E를 표시합니다. 표는 좌우로 밀어 확인할 수 있습니다.</p></section>`;
 }
 
 function detailTabHtml(game) {
