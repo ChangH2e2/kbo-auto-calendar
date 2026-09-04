@@ -1,0 +1,10 @@
+{
+  "name": "KBO GameDay",
+  "short_name": "KBO GameDay",
+  "description": "KBO 경기 일정과 예매 시점을 한 흐름에서 확인합니다.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f4f2eb",
+  "theme_color": "#f4f2eb",
+  "lang": "ko-KR"
+}

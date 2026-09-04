@@ -29,13 +29,13 @@ const today = startOfDay(new Date());
 const storedFavoriteTeam = localStorage.getItem("kbo-favorite-team");
 const state = {
   games: [],
-  favoriteTeam: storedFavoriteTeam || "LG",
+  favoriteTeam: storedFavoriteTeam || null,
   hasStoredTeam: Boolean(storedFavoriteTeam),
   activeView: window.innerWidth >= 960 ? "schedule" : "today",
   cursorDate: new Date(today),
   selectedDate: toISODate(today),
   selectedGameId: null,
-  teamScope: window.innerWidth >= 960 ? "all" : "favorite",
+  teamScope: window.innerWidth >= 960 || !storedFavoriteTeam ? "all" : "favorite",
   venue: "all",
   loadedAt: null,
   dataTimestamp: null,
@@ -486,10 +486,10 @@ function formatTime(date) {
 }
 
 function renderFavoriteTeam() {
-  document.querySelectorAll("[data-favorite-team]").forEach((element) => { element.textContent = state.favoriteTeam; });
+  document.querySelectorAll("[data-favorite-team]").forEach((element) => { element.textContent = state.favoriteTeam || "응원팀 선택"; });
   document.querySelectorAll("[data-team-dot]").forEach((element) => {
-    element.dataset.teamDot = state.favoriteTeam;
-    element.style.setProperty("--team-color", TEAM_COLORS[state.favoriteTeam]);
+    element.dataset.teamDot = state.favoriteTeam || "none";
+    element.style.setProperty("--team-color", TEAM_COLORS[state.favoriteTeam] || "#a8a39a");
   });
   dom.teamPicker.innerHTML = TEAMS.map((team) => `
     <button class="team-option ${team === state.favoriteTeam ? "is-active" : ""}" type="button" data-team="${escapeHtml(team)}">
@@ -508,6 +508,11 @@ function setFavoriteTeam(team) {
 }
 
 function renderNextGame() {
+  if (!state.favoriteTeam) {
+    dom.nextGame.innerHTML = `<div class="empty-hero"><h1>응원팀을 선택해 보세요</h1><p>설정에서 팀을 고르면 다음 경기와 예매 정보를 맞춤으로 보여드립니다.</p><button class="primary-button" type="button" data-choose-team>응원팀 선택</button></div>`;
+    dom.nextGame.querySelector("[data-choose-team]").addEventListener("click", () => setActiveView("settings"));
+    return;
+  }
   const upcoming = state.games
     .filter((game) => (game.home === state.favoriteTeam || game.away === state.favoriteTeam) && parseGameDate(game) > new Date() && !["cancelled", "postponed"].includes(getGameState(game)))
     .sort((a, b) => parseGameDate(a) - parseGameDate(b));
@@ -828,8 +833,9 @@ document.getElementById("sidebarTeamButton").addEventListener("click", () => set
 document.getElementById("mobileTeamButton").addEventListener("click", () => setActiveView("settings"));
 document.getElementById("resetPreferences").addEventListener("click", () => {
   localStorage.removeItem("kbo-favorite-team");
-  state.favoriteTeam = "LG";
+  state.favoriteTeam = null;
   state.hasStoredTeam = false;
+  state.teamScope = "all";
   renderAll();
 });
 document.getElementById("teamScopeFilter").addEventListener("click", (event) => {
@@ -875,6 +881,7 @@ document.getElementById("shareGame").addEventListener("click", async () => {
 
 fetchGames();
 liveRefreshTimer = setInterval(refreshLiveData, 60 * 1000);
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch((error) => console.warn("PWA registration failed", error));
 dom.refreshNow.addEventListener("click", async () => {
   dom.refreshNow.disabled = true;
   dom.refreshNow.textContent = "갱신 중…";
