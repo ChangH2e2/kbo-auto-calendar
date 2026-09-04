@@ -149,6 +149,7 @@ button:active { transform: translateY(1px); }
 .ticket-head strong { font-size: 14px; }
 .countdown { font-size: clamp(22px, 7vw, 32px); font-variant-numeric: tabular-nums; font-weight: 850; letter-spacing: -0.04em; white-space: nowrap; }
 .ticket-absolute { margin: 4px 0 14px; font-size: 13px; font-weight: 700; }
+.ticket-source { margin: -7px 0 10px; color: var(--ink-soft); font-size: 12px; font-weight: 750; }
 .ticket-disclaimer { margin: 0 0 12px; color: var(--ink-faint); font-size: 12px; line-height: 1.45; }
 .inline-status { display: inline-flex; margin-left: 6px; vertical-align: middle; }
 .primary-button, .secondary-button {

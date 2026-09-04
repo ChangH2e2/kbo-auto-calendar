@@ -6,6 +6,7 @@
 - Database ID: `9a63a8b5-dc70-46e8-b5cb-fc1dd9b9f2a7`
 - Pages binding: `KBO_DB`
 - API route: `GET /api/games?from=YYYY-MM-DD&to=YYYY-MM-DD`
+- Ticket policy route: `GET /api/ticket-policies`
 
 ## Git 연결
 
@@ -38,6 +39,11 @@ D1 자격증명은 브라우저 코드에 넣지 않는다.
 `detail_update.yml`은 최근 14일 경기의 이닝·타자·투수 기록만 6시간마다 보강한다.
 일정 수집이 상세 필드를 보내지 않아도 ingest upsert는 D1에 이미 저장된 상세 기록과
 공휴일명을 유지한다.
+
+구단별 공식 예매처와 일반 오픈 기준은 `ticket_policies` 테이블에서 관리한다.
+`migrations/0002_seed_ticket_policies.sql`이 초기 정책을 넣으며, 프런트엔드는
+`/api/ticket-policies`를 먼저 사용하고 조회 실패 시에만 번들 기본값을 사용한다.
+일반 오픈 기준은 확정된 경기별 판매 정보가 아니므로 화면에서도 항상 예상값으로 표시한다.
 
 Pages 프로젝트 생성 후 환경변수 `INGEST_TOKEN`을 등록하고, GitHub 저장소 Secrets에
 `KBO_INGEST_URL` (Pages 주소)와 동일한 토큰인 `KBO_INGEST_TOKEN`을 등록하면 매일

@@ -1,4 +1,5 @@
 const API_URL = "/api/games";
+const TICKET_POLICY_API_URL = "/api/ticket-policies";
 
 const TEAMS = ["KIA", "KT", "LG", "NC", "SSG", "두산", "롯데", "삼성", "키움", "한화"];
 const TEAM_COLORS = {
@@ -9,14 +10,14 @@ const STADIUMS = {
   KIA: "광주-KIA 챔피언스 필드", KT: "수원KT위즈파크", LG: "잠실야구장", NC: "창원NC파크", SSG: "인천SSG랜더스필드",
   두산: "잠실야구장", 롯데: "사직야구장", 삼성: "대구삼성라이온즈파크", 키움: "고척스카이돔", 한화: "대전한화생명볼파크"
 };
-const TICKET_RULES = {
-  LG: { vendor: "티켓링크", url: "https://www.ticketlink.co.kr/sports/baseball/64", daysBefore: 7, hour: 11 },
+const DEFAULT_TICKET_RULES = {
+  LG: { vendor: "티켓링크", url: "https://ticketlink.co.kr/", daysBefore: 7, openTime: "11:00" },
   두산: { vendor: "인터파크", url: "https://ticket.interpark.com/Contents/Sports/GoodsInfo?SportsCode=07001&TeamCode=PB004", daysBefore: 7, hour: 11 },
   키움: { vendor: "인터파크", url: "https://ticket.interpark.com/Contents/Sports/GoodsInfo?SportsCode=07001&TeamCode=PB003", daysBefore: 7, hour: 14 },
-  KT: { vendor: "티켓링크", url: "https://www.ticketlink.co.kr/sports/baseball/62", daysBefore: 7, hour: 14 },
-  KIA: { vendor: "티켓링크", url: "https://www.ticketlink.co.kr/sports/baseball/58", daysBefore: 7, hour: 11 },
-  삼성: { vendor: "티켓링크", url: "https://www.ticketlink.co.kr/sports/baseball/57", daysBefore: 7, hour: 11 },
-  한화: { vendor: "티켓링크", url: "https://www.ticketlink.co.kr/sports/baseball/60", daysBefore: 7, hour: 11 },
+  KT: { vendor: "티켓링크", url: "https://ticketlink.co.kr/", daysBefore: 7, openTime: "14:00" },
+  KIA: { vendor: "티켓링크", url: "https://ticketlink.co.kr/", daysBefore: 7, openTime: "11:00" },
+  삼성: { vendor: "티켓링크", url: "https://ticketlink.co.kr/", daysBefore: 7, openTime: "11:00" },
+  한화: { vendor: "티켓링크", url: "https://ticketlink.co.kr/", daysBefore: 7, openTime: "11:00" },
   NC: { vendor: "NC 다이노스", url: "https://ticket.ncdinos.com/", daysBefore: 7, hour: 11 },
   롯데: { vendor: "롯데 자이언츠", url: "https://ticket.giantsclub.com/", daysBefore: 7, hour: 14 },
   SSG: { vendor: "SSG.COM", url: "https://ticket.ssg.com/ticket", daysBefore: 7, hour: 11 }
@@ -38,6 +39,7 @@ const state = {
   loadedAt: null,
   dataTimestamp: null,
   sourceState: demoMode ? "sample" : "loading",
+  ticketRules: { ...DEFAULT_TICKET_RULES },
   detailTab: "score"
 };
 
@@ -153,12 +155,18 @@ function scoreText(game) {
 }
 
 function getTicket(game) {
-  const rule = TICKET_RULES[game.home] || TICKET_RULES.LG;
+  const rule = state.ticketRules[game.home] || DEFAULT_TICKET_RULES.LG;
   const gameDate = parseGameDate(game);
   const openAt = addDays(startOfDay(gameDate), -rule.daysBefore);
-  openAt.setHours(rule.hour, 0, 0, 0);
+  const [openHour = 11, openMinute = 0] = String(rule.openTime || `${rule.hour || 11}:00`).split(":").map(Number);
+  openAt.setHours(openHour, openMinute, 0, 0);
   const isOpen = Date.now() >= openAt.getTime() && Date.now() < gameDate.getTime();
   return { ...rule, openAt, gameDate, isOpen };
+}
+
+function ticketSourceText(ticket) {
+  try { return `${ticket.vendor} · ${new URL(ticket.url).hostname.replace(/^www\./, "")}`; }
+  catch { return ticket.vendor || "공식 예매처"; }
 }
 
 function getTicketState(ticket) {
@@ -253,6 +261,22 @@ function renderLoading() {
   dom.todayGames.innerHTML = `<div class="day-empty">오늘 경기 정보를 불러오고 있습니다.</div>`;
 }
 
+async function fetchTicketPolicies() {
+  try {
+    const response = await fetch(TICKET_POLICY_API_URL);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const payload = await response.json();
+    const policies = Array.isArray(payload?.policies) ? payload.policies : [];
+    const remoteRules = Object.fromEntries(policies
+      .filter((policy) => TEAMS.includes(policy.team) && policy.vendor && policy.url)
+      .map((policy) => [policy.team, policy]));
+    state.ticketRules = { ...DEFAULT_TICKET_RULES, ...remoteRules };
+  } catch (error) {
+    console.warn("Ticket policy request failed; using bundled defaults", error);
+    state.ticketRules = { ...DEFAULT_TICKET_RULES };
+  }
+}
+
 async function fetchGames() {
   renderLoading();
   if (demoMode) {
@@ -265,7 +289,10 @@ async function fetchGames() {
   }
 
   try {
-    const response = await fetch(`${API_URL}?from=${encodeURIComponent(toISODate(addDays(today, -120)))}&to=${encodeURIComponent(toISODate(addDays(today, 180)))}`);
+    const [response] = await Promise.all([
+      fetch(`${API_URL}?from=${encodeURIComponent(toISODate(addDays(today, -120)))}&to=${encodeURIComponent(toISODate(addDays(today, 180)))}`),
+      fetchTicketPolicies()
+    ]);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const payload = await response.json();
     const rows = Array.isArray(payload) ? payload : (payload.games || []);
@@ -369,10 +396,11 @@ function renderNextGame() {
       <div class="game-meta"><strong>${escapeHtml(game.stadium)}</strong>${game.broadcast ? ` / ${escapeHtml(game.broadcast)}` : ""}</div>
       ${game.home === state.favoriteTeam ? `
         <div class="ticket-panel ticket-${ticketState}" aria-label="예매 안내">
-          <div class="ticket-head"><strong>${ticketState === "open" ? "예매 중" : ticketState === "soon" ? "예매 임박" : "예매 오픈까지"}</strong><span class="countdown" data-countdown="${ticket.openAt.toISOString()}">${ticketState === "open" ? "지금 예매 가능" : "계산 중"}</span></div>
-          <p class="ticket-absolute">${escapeHtml(openText)} 오픈</p>
-          <p class="ticket-disclaimer">예매 일정은 구단·예매처 사정에 따라 변동될 수 있습니다.</p>
-          <a class="${ticket.isOpen ? "primary-button" : "secondary-button"}" href="${escapeHtml(ticket.url)}" target="_blank" rel="noopener noreferrer">${ticket.isOpen ? "공식 예매처 열기" : "예매 정보 확인"}</a>
+          <div class="ticket-head"><strong>${ticketState === "open" ? "예매 가능 예상" : ticketState === "soon" ? "예매 오픈 임박" : "예매 오픈 예상까지"}</strong><span class="countdown" data-countdown="${ticket.openAt.toISOString()}">${ticketState === "open" ? "공식 예매처 확인 필요" : "계산 중"}</span></div>
+          <p class="ticket-absolute">일반 기준 ${escapeHtml(openText)} 오픈 예상</p>
+          <p class="ticket-source">${escapeHtml(ticketSourceText(ticket))}</p>
+          <p class="ticket-disclaimer">${escapeHtml(ticket.description || "일반 일정 참고값이며 경기별 구단·예매처 공지를 우선합니다.")}</p>
+          <a class="${ticket.isOpen ? "primary-button" : "secondary-button"}" href="${escapeHtml(ticket.url)}" target="_blank" rel="noopener noreferrer">공식 예매처에서 확인</a>
         </div>` : ""}
     </article>`;
   updateCountdowns();
@@ -571,7 +599,7 @@ function detailContentHtml(game, status) {
     const ticket = getTicket(game);
     const ticketState = getTicketState(ticket);
     const openText = new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(ticket.openAt);
-    return `<section class="detail-card"><h2>예매 안내 <span class="inline-status ticket-${ticketState}">${ticketState === "open" ? "예매 중" : ticketState === "soon" ? "예매 임박" : "오픈 전"}</span></h2><div class="detail-tab-panel"><p>${escapeHtml(openText)} 오픈</p><p class="ticket-disclaimer">예매 일정은 구단·예매처 사정에 따라 변동될 수 있습니다.</p><a class="${ticket.isOpen ? "primary-button" : "secondary-button"}" href="${escapeHtml(ticket.url)}" target="_blank" rel="noopener noreferrer">${ticket.isOpen ? "공식 예매처 열기" : "예매 정보 확인"}</a></div></section>`;
+    return `<section class="detail-card"><h2>예매 안내 <span class="inline-status ticket-${ticketState}">${ticketState === "open" ? "예매 가능 예상" : ticketState === "soon" ? "오픈 임박" : "오픈 전"}</span></h2><div class="detail-tab-panel"><p>일반 기준 ${escapeHtml(openText)} 오픈 예상</p><p class="ticket-source">${escapeHtml(ticketSourceText(ticket))}</p><p class="ticket-disclaimer">${escapeHtml(ticket.description || "일반 일정 참고값이며 경기별 구단·예매처 공지를 우선합니다.")}</p><a class="${ticket.isOpen ? "primary-button" : "secondary-button"}" href="${escapeHtml(ticket.url)}" target="_blank" rel="noopener noreferrer">공식 예매처에서 확인</a></div></section>`;
   }
   if (["cancelled", "postponed"].includes(status)) return `<section class="detail-card"><div class="detail-tab-panel"><p>${escapeHtml(detailNote(game, status))}</p><p class="detail-empty">새 일정이 확인되면 이 화면에 반영됩니다.</p></div></section>`;
   return `
@@ -633,7 +661,7 @@ function updateCountdowns() {
   const update = () => {
     document.querySelectorAll("[data-countdown]").forEach((element) => {
       const diff = new Date(element.dataset.countdown).getTime() - Date.now();
-      if (diff <= 0) { element.textContent = "지금 예매 가능"; return; }
+      if (diff <= 0) { element.textContent = "공식 예매처 확인 필요"; return; }
       const days = Math.floor(diff / 86400000);
       const hours = Math.floor((diff % 86400000) / 3600000);
       const minutes = Math.floor((diff % 3600000) / 60000);
