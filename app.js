@@ -40,6 +40,7 @@ const state = {
   loadedAt: null,
   dataTimestamp: null,
   sourceState: demoMode ? "sample" : "loading",
+  ingestionStatus: null,
   ticketRules: { ...DEFAULT_TICKET_RULES },
   detailTab: "score"
 };
@@ -60,6 +61,7 @@ const dom = {
   dayPanel: document.getElementById("selectedDayPanel"),
   scheduleFreshness: document.getElementById("scheduleFreshness"),
   settingsFreshness: document.getElementById("settingsFreshness"),
+  ingestionStatus: document.getElementById("ingestionStatus"),
   teamPicker: document.getElementById("teamPicker"),
   firstVisitNotice: document.getElementById("firstVisitNotice"),
   dialog: document.getElementById("gameDialog"),
@@ -347,6 +349,17 @@ async function fetchTicketPolicies() {
   }
 }
 
+async function fetchIngestionStatus() {
+  try {
+    const response = await fetch("/api/ingestion-status", { cache: "no-store" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    state.ingestionStatus = (await response.json()).run || null;
+  } catch (error) {
+    console.warn("Ingestion status request failed", error);
+    state.ingestionStatus = null;
+  }
+}
+
 async function fetchGames() {
   renderLoading();
   if (demoMode) {
@@ -361,7 +374,8 @@ async function fetchGames() {
   try {
     const [response] = await Promise.all([
       fetch(`${API_URL}?from=${encodeURIComponent(toISODate(addDays(today, -120)))}&to=${encodeURIComponent(toISODate(addDays(today, 180)))}`),
-      fetchTicketPolicies()
+      fetchTicketPolicies(),
+      fetchIngestionStatus()
     ]);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const payload = await response.json();
@@ -440,6 +454,20 @@ function renderNotice() {
     dom.notice.className = "data-notice error";
     dom.notice.innerHTML = `경기 데이터 서버에 연결하지 못했습니다. 기존 데이터는 변경되지 않았습니다. <a href="?demo=1">샘플 화면 보기</a>`;
   }
+}
+
+function renderIngestionStatus() {
+  if (!dom.ingestionStatus) return;
+  const run = state.ingestionStatus;
+  if (!run) {
+    dom.ingestionStatus.textContent = "수집 실행 기록을 확인할 수 없습니다";
+    return;
+  }
+  const finished = run.finished_at ? new Date(run.finished_at) : null;
+  const time = finished && !Number.isNaN(finished.getTime()) ? formatTime(finished) : "시간 미상";
+  dom.ingestionStatus.textContent = run.status === "success"
+    ? `수집 정상 · ${time} · ${run.accepted_count}건 반영`
+    : `수집 실패 · ${time} · 이전 데이터 유지`;
 }
 
 function freshnessText() {
@@ -787,6 +815,7 @@ function renderAll() {
   renderNextGame();
   renderToday();
   renderSchedule();
+  renderIngestionStatus();
   setActiveView(state.activeView);
 }
 
