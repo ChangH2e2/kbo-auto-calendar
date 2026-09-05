@@ -152,7 +152,11 @@ function getGameState(game) {
 }
 
 function shouldShowTicket(game, status = getGameState(game)) {
-  return status === "scheduled" && parseGameDate(game).getTime() > Date.now();
+  if (status !== "scheduled" || parseGameDate(game).getTime() <= Date.now()) return false;
+  const ticket = getTicket(game);
+  // 추정 오픈 시각이 지난 뒤에는 낡은 예매 안내를 반복하지 않는다.
+  // 공식 예매처가 확인한 상태가 있을 때만 안내를 유지한다.
+  return ticket.isOfficial || Date.now() < ticket.openAt.getTime();
 }
 
 function getStatusText(game) {
@@ -744,7 +748,7 @@ function detailNote(game, status) {
 function detailContentHtml(game, status) {
   if (status === "scheduled") {
     const ticket = getTicket(game);
-    return `<section class="detail-card"><h2>예매 안내</h2><div class="detail-tab-panel">${ticketPanelHtml(game, ticket, { compact: true })}</div></section>`;
+    return `<section class="detail-card"><h2>예매 안내</h2><div class="detail-tab-panel">${shouldShowTicket(game, status) ? ticketPanelHtml(game, ticket, { compact: true }) : `<p class="detail-empty">예매 오픈 시점이 지난 경기입니다. 공식 예매처에서 현재 판매 상태를 확인해 주세요.</p>`}</div></section>`;
   }
   if (["cancelled", "postponed"].includes(status)) return `<section class="detail-card"><div class="detail-tab-panel"><p>${escapeHtml(detailNote(game, status))}</p><p class="detail-empty">새 일정이 확인되면 이 화면에 반영됩니다.</p></div></section>`;
   return `
@@ -789,9 +793,21 @@ function detailTabHtml(game) {
 function statsGroupHtml(team, rows, type) {
   if (!rows.length) return "";
   if (type === "hitter") {
-    return `<div class="stat-group"><h3>${escapeHtml(team)}</h3><table class="stat-table"><thead><tr><th>선수</th><th>타수</th><th>안타</th><th>타점</th><th>타율</th></tr></thead><tbody>${rows.map((row) => `<tr><td><strong>${escapeHtml(row.name)}</strong> ${escapeHtml(row.pos || "")}</td><td>${escapeHtml(row.ab)}</td><td>${escapeHtml(row.hit)}</td><td>${escapeHtml(row.rbi)}</td><td>${escapeHtml(row.avg)}</td></tr>`).join("")}</tbody></table></div>`;
+    return `<div class="stat-group"><h3>${escapeHtml(team)}</h3><table class="stat-table"><thead><tr><th>선수</th><th>타수</th><th>안타</th><th>타점</th><th>타율</th></tr></thead><tbody>${rows.map((row) => `<tr><td><strong>${escapeHtml(row.name)}</strong><small class="player-role">${escapeHtml(batterRoleText(row))}</small>${row.records && row.records !== "-" ? `<small class="player-records">${escapeHtml(row.records)}</small>` : ""}</td><td>${escapeHtml(row.ab ?? "-")}</td><td>${escapeHtml(row.hit ?? "-")}</td><td>${escapeHtml(row.rbi ?? "-")}</td><td>${escapeHtml(row.avg ?? "-")}</td></tr>`).join("")}</tbody></table></div>`;
   }
   return `<div class="stat-group"><h3>${escapeHtml(team)}</h3><table class="stat-table"><thead><tr><th>선수</th><th>결과</th><th>이닝</th><th>투구</th><th>삼진</th><th>실점</th></tr></thead><tbody>${rows.map((row) => `<tr><td><strong>${escapeHtml(row.name)}</strong></td><td>${escapeHtml(row.result || "-")}</td><td>${escapeHtml(row.ip)}</td><td>${escapeHtml(row.np)}</td><td>${escapeHtml(row.so)}</td><td>${escapeHtml(row.er)}</td></tr>`).join("")}</tbody></table></div>`;
+}
+
+function friendlyPosition(position) {
+  const value = String(position || "").trim();
+  const aliases = { P: "투수", C: "포수", "1B": "1루수", "2B": "2루수", "3B": "3루수", SS: "유격수", LF: "좌익수", CF: "중견수", RF: "우익수", DH: "지명타자" };
+  return aliases[value.toUpperCase()] || value || "포지션 미정";
+}
+
+function batterRoleText(row) {
+  const order = String(row.order || "").replace(/^\[|\]$/g, "");
+  const role = order === "대타" ? "대타" : order || "타순 미정";
+  return `${role} · ${friendlyPosition(row.pos)}`;
 }
 
 function bindDetailInteractions(game) {

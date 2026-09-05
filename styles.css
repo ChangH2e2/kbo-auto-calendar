@@ -334,7 +334,9 @@ button:active { transform: translateY(1px); }
 .stat-group h3 { margin: 0 0 8px; font-size: 14px; color: var(--ink-soft); }
 .stat-table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
 .stat-table th, .stat-table td { padding: 10px 6px; border-bottom: 1px solid var(--line); text-align: right; }
-.stat-table th:first-child, .stat-table td:first-child { text-align: left; }
+  .stat-table th:first-child, .stat-table td:first-child { text-align: left; }
+  .player-role, .player-records { display: block; margin-top: 3px; color: var(--ink-soft); font-size: 10px; font-weight: 650; }
+  .player-records { color: var(--ink-faint); font-weight: 500; }
 .stat-table tr:last-child td { border-bottom: 0; }
 .detail-empty { padding: 24px 0; color: var(--ink-faint); text-align: center; }
 .detail-source { color: var(--ink-faint); font-size: 12px; text-align: center; }
