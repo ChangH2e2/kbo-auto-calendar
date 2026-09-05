@@ -382,7 +382,7 @@ button:active { transform: translateY(1px); }
   .calendar-weekday { min-height: 42px; display: grid; place-items: center; border-bottom: 1px solid var(--line); color: var(--ink-soft); font-size: 12px; font-weight: 800; }
   .calendar-weekday.sunday { color: var(--live); }
   .calendar-weekday.saturday { color: var(--accent); }
-  .calendar-day { min-width: 0; padding: 7px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); overflow: hidden; background: var(--surface-strong); }
+  .calendar-day { min-width: 0; padding: 5px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); overflow: hidden; background: var(--surface-strong); }
   .calendar-day:nth-child(7n) { border-right: 0; }
   .calendar-day.is-outside { background: color-mix(in srgb, var(--surface-muted) 42%, transparent); }
   .calendar-day.is-selected { box-shadow: inset 0 0 0 2px var(--ink); }
@@ -390,7 +390,7 @@ button:active { transform: translateY(1px); }
   .day-number { display: block; margin-bottom: 5px; color: var(--ink-soft); font-size: 12px; font-weight: 800; }
   .day-number.sunday { color: var(--live); }
   .day-number.saturday { color: var(--accent); }
-  .month-chip { width: 100%; min-height: 24px; margin: 0 0 3px; padding: 3px 5px; border: 0; border-radius: 6px; background: var(--surface-muted); color: var(--ink); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px; text-align: left; font-size: 10px; cursor: pointer; }
+  .month-chip { width: 100%; min-height: 20px; margin: 0 0 2px; padding: 2px 4px; border: 0; border-radius: 5px; background: var(--surface-muted); color: var(--ink); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px; text-align: left; font-size: 9px; cursor: pointer; }
   .month-chip strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .month-chip span { color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .month-chip.is-favorite { box-shadow: inset 3px 0 var(--team-color); padding-left: 7px; }

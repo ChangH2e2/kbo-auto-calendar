@@ -628,13 +628,15 @@ function renderMonth() {
   const days = monthGridDates(state.cursorDate).map((date) => {
     const dateString = toISODate(date);
     const games = gamesForDate(dateString);
-    const visible = games.slice(0, 3);
+    // KBO 정규일은 최대 5경기이므로 월간 캘린더에서도 모든 팀 대진을 노출한다.
+    // 더블헤더 등 5경기를 초과하는 경우에만 추가 경기 버튼을 표시한다.
+    const visible = games.slice(0, 5);
     const day = date.getDay();
     return `
       <div class="calendar-day ${date.getMonth() !== month ? "is-outside" : ""} ${dateString === state.selectedDate ? "is-selected" : ""} ${dateString === toISODate(today) ? "is-today" : ""}" data-date="${dateString}">
         <button class="day-number ${day === 0 ? "sunday" : day === 6 ? "saturday" : ""}" type="button" data-select-date="${dateString}">${date.getDate()}</button>
         ${visible.map(monthChipHtml).join("")}
-        ${games.length > 3 ? `<button class="more-games" type="button" data-select-date="${dateString}">+${games.length - 3}경기</button>` : ""}
+        ${games.length > 5 ? `<button class="more-games" type="button" data-select-date="${dateString}">+${games.length - 5}경기</button>` : ""}
       </div>`;
   }).join("");
   dom.month.innerHTML = weekdayHeaders + days;
