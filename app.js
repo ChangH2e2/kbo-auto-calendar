@@ -793,20 +793,28 @@ function detailTabHtml(game) {
 function statsGroupHtml(team, rows, type) {
   if (!rows.length) return "";
   if (type === "hitter") {
-    return `<div class="stat-group"><h3>${escapeHtml(team)}</h3><table class="stat-table"><thead><tr><th>선수</th><th>타수</th><th>안타</th><th>타점</th><th>타율</th></tr></thead><tbody>${rows.map((row) => `<tr><td><strong>${escapeHtml(row.name)}</strong><small class="player-role">${escapeHtml(batterRoleText(row))}</small>${row.records && row.records !== "-" ? `<small class="player-records">${escapeHtml(row.records)}</small>` : ""}</td><td>${escapeHtml(row.ab ?? "-")}</td><td>${escapeHtml(row.hit ?? "-")}</td><td>${escapeHtml(row.rbi ?? "-")}</td><td>${escapeHtml(row.avg ?? "-")}</td></tr>`).join("")}</tbody></table></div>`;
+    const seenOrders = new Set();
+    const cells = rows.map((row) => {
+      const order = String(row.order || "");
+      const isSubstitute = Boolean(order && seenOrders.has(order));
+      if (order) seenOrders.add(order);
+      return `<tr><td><strong>${escapeHtml(row.name)}</strong><small class="player-role">${escapeHtml(batterRoleText(row, isSubstitute))}</small>${row.records && row.records !== "-" ? `<small class="player-records">${escapeHtml(row.records)}</small>` : ""}</td><td>${escapeHtml(row.ab ?? "-")}</td><td>${escapeHtml(row.hit ?? "-")}</td><td>${escapeHtml(row.rbi ?? "-")}</td><td>${escapeHtml(row.avg ?? "-")}</td></tr>`;
+    }).join("");
+    return `<div class="stat-group"><h3>${escapeHtml(team)}</h3><table class="stat-table"><thead><tr><th>선수</th><th>타수</th><th>안타</th><th>타점</th><th>타율</th></tr></thead><tbody>${cells}</tbody></table></div>`;
   }
   return `<div class="stat-group"><h3>${escapeHtml(team)}</h3><table class="stat-table"><thead><tr><th>선수</th><th>결과</th><th>이닝</th><th>투구</th><th>삼진</th><th>실점</th></tr></thead><tbody>${rows.map((row) => `<tr><td><strong>${escapeHtml(row.name)}</strong></td><td>${escapeHtml(row.result || "-")}</td><td>${escapeHtml(row.ip)}</td><td>${escapeHtml(row.np)}</td><td>${escapeHtml(row.so)}</td><td>${escapeHtml(row.er)}</td></tr>`).join("")}</tbody></table></div>`;
 }
 
 function friendlyPosition(position) {
   const value = String(position || "").trim();
-  const aliases = { P: "투수", C: "포수", "1B": "1루수", "2B": "2루수", "3B": "3루수", SS: "유격수", LF: "좌익수", CF: "중견수", RF: "우익수", DH: "지명타자" };
-  return aliases[value.toUpperCase()] || value || "포지션 미정";
+  const aliases = { P: "투수", C: "포수", "1B": "1루수", "2B": "2루수", "3B": "3루수", SS: "유격수", LF: "좌익수", CF: "중견수", RF: "우익수", DH: "지명타자", "一": "1루수", "二": "2루수", "三": "3루수", 유: "유격수", 좌: "좌익수", 중: "중견수", 우: "우익수", 포: "포수", 지: "지명타자" };
+  if (value.startsWith("타")) return aliases[value.slice(1)] || "타자";
+  return aliases[value.toUpperCase()] || aliases[value] || value || "포지션 미정";
 }
 
-function batterRoleText(row) {
+function batterRoleText(row, isSubstitute = false) {
   const order = String(row.order || "").replace(/^\[|\]$/g, "");
-  const role = order === "대타" ? "대타" : order || "타순 미정";
+  const role = order === "대타" || isSubstitute ? `대타${order && order !== "대타" ? ` (${order})` : ""}` : order || "타순 미정";
   return `${role} · ${friendlyPosition(row.pos)}`;
 }
 
