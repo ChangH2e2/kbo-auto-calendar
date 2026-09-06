@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { normalizeEntry, normalizeTransaction, normalizeCheck, teamsWithFullRoster } from '../functions/api/roster-ingest.js';
-import { positionCounts, summarizeChanges } from '../functions/api/roster.js';
+import { positionCounts, summarizeChanges, clampDays } from '../functions/api/roster.js';
 
 const entry = (extra = {}) => ({ team: '한화', name: '문현빈', back_number: '51', position: '외야수',
   bats_throws: '우투좌타', birth: '2004-04-20', physique: '174cm, 82kg', ...extra });
@@ -74,4 +74,13 @@ print(json.dumps([list(r) for r in db.execute('SELECT team_id,player_name,as_of 
     schema: readFileSync(new URL('../migrations/0012_roster.sql', import.meta.url), 'utf8'), seed }) });
   assert.equal(proc.status, 0, proc.stderr);
   assert.deepEqual(JSON.parse(proc.stdout), [['LG', '오지환', '2026-09-05'], ['한화', '문현빈', '2026-09-06']]);
+});
+
+test('days 파라미터가 없으면 기본값이다 — Number(null)이 0이라 그냥 넘기면 1일로 떨어진다', () => {
+  assert.equal(clampDays(null), 30);
+  assert.equal(clampDays(''), 30);
+  assert.equal(clampDays('어제'), 30);
+  assert.equal(clampDays('7'), 7);
+  assert.equal(clampDays('0'), 1);
+  assert.equal(clampDays('9999'), 120);
 });

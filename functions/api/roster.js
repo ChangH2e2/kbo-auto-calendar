@@ -4,6 +4,15 @@ import { TEAMS } from "./roster-ingest.js";
 const DEFAULT_DAYS = 30;
 const MAX_DAYS = 120;
 
+// searchParams.get은 없을 때 null을 주고 Number(null)은 0이다.
+// 그대로 Number.isFinite에 넣으면 기본값이 아니라 0(→1일)로 떨어진다.
+export function clampDays(raw) {
+  if (raw === null || raw === undefined || String(raw).trim() === "") return DEFAULT_DAYS;
+  const value = Number(raw);
+  if (!Number.isFinite(value)) return DEFAULT_DAYS;
+  return Math.min(Math.max(Math.trunc(value), 1), MAX_DAYS);
+}
+
 export function positionCounts(entries) {
   const counts = { 투수: 0, 포수: 0, 내야수: 0, 외야수: 0 };
   for (const entry of entries) {
@@ -26,8 +35,7 @@ export async function onRequestGet(context) {
   const url = new URL(context.request.url);
   const team = url.searchParams.get("team") || "";
   if (!TEAMS.has(team)) return Response.json({ error: "알 수 없는 구단입니다." }, { status: 400 });
-  const requestedDays = Number(url.searchParams.get("days"));
-  const days = Number.isFinite(requestedDays) ? Math.min(Math.max(requestedDays, 1), MAX_DAYS) : DEFAULT_DAYS;
+  const days = clampDays(url.searchParams.get("days"));
   const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const since = new Date(Date.now() + 9 * 60 * 60 * 1000 - days * 86400000).toISOString().slice(0, 10);
 
