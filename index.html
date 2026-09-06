@@ -12,7 +12,7 @@
   <link rel="manifest" href="./manifest.json">
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="./styles.css?v=20260906-lineup">
+  <link rel="stylesheet" href="./styles.css?v=20260906-team">
 </head>
 <body>
   <div class="app-shell">
@@ -29,6 +29,7 @@
       <nav class="sidebar-nav">
         <button class="nav-item" data-view="today" type="button">오늘</button>
         <button class="nav-item is-active" data-view="schedule" type="button">일정</button>
+        <button class="nav-item" data-view="team" type="button">내 팀</button>
         <button class="nav-item" data-view="settings" type="button">설정</button>
       </nav>
       <div class="sidebar-rules">
@@ -111,6 +112,10 @@
         </div>
       </section>
 
+      <section class="view" id="teamView" data-view-panel="team" hidden>
+        <div class="content-column team-layout" id="teamMount"></div>
+      </section>
+
       <section class="view" id="settingsView" data-view-panel="settings" hidden>
         <div class="content-column settings-layout">
           <header class="simple-heading">
@@ -147,6 +152,7 @@
   <nav class="mobile-bottom-nav" aria-label="모바일 주요 메뉴">
     <button data-view="today" type="button"><span aria-hidden="true">⌂</span><strong>오늘</strong></button>
     <button class="is-active" data-view="schedule" type="button"><span aria-hidden="true">▦</span><strong>일정</strong></button>
+    <button data-view="team" type="button"><span aria-hidden="true">◉</span><strong>내 팀</strong></button>
     <button data-view="settings" type="button"><span aria-hidden="true">⚙</span><strong>설정</strong></button>
   </nav>
 
@@ -161,6 +167,6 @@
     </div>
   </dialog>
 
-  <script src="./app.js?v=20260906-lineup" defer></script>
+  <script src="./app.js?v=20260906-team" defer></script>
 </body>
 </html>

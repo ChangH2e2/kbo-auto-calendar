@@ -35,7 +35,7 @@ const state = {
   games: [],
   favoriteTeam: storedFavoriteTeam || null,
   hasStoredTeam: Boolean(storedFavoriteTeam),
-  activeView: ["today", "schedule", "settings"].includes(initialView) ? initialView : (window.innerWidth >= 960 ? "schedule" : "today"),
+  activeView: ["today", "schedule", "team", "settings"].includes(initialView) ? initialView : (window.innerWidth >= 960 ? "schedule" : "today"),
   cursorDate: new Date(today),
   selectedDate: toISODate(today),
   selectedGameId: null,
@@ -46,6 +46,8 @@ const state = {
   sourceState: demoMode ? "sample" : "loading",
   ingestionStatus: null,
   ingestionRuns: {},
+  roster: null,
+  rosterState: "idle",
   ticketRules: { ...DEFAULT_TICKET_RULES },
   detailTab: "score",
   detailLineupTeam: null
@@ -59,6 +61,7 @@ let deferredInstallPrompt = null;
 const dom = {
   notice: document.getElementById("dataNotice"),
   nextGame: document.getElementById("nextGameMount"),
+  team: document.getElementById("teamMount"),
   todayGames: document.getElementById("todayGamesMount"),
   todayDate: document.getElementById("todayDateLabel"),
   todayFreshness: document.getElementById("todayFreshness"),
@@ -565,10 +568,13 @@ function renderFavoriteTeam() {
 
 function setFavoriteTeam(team) {
   if (!TEAMS.includes(team)) return;
+  const changed = state.favoriteTeam !== team;
   state.favoriteTeam = team;
   state.hasStoredTeam = true;
   localStorage.setItem("kbo-favorite-team", team);
+  if (changed) { state.roster = null; state.rosterState = "idle"; }
   renderAll();
+  if (changed && state.activeView === "team") fetchRoster();
 }
 
 /* ── 경기 프리뷰: 선발 매치업과 라인업 ─────────────────────────────────────
@@ -1101,11 +1107,133 @@ function updateCountdowns() {
 }
 
 function setActiveView(view) {
-  if (!["today", "schedule", "settings"].includes(view)) return;
+  if (!["today", "schedule", "team", "settings"].includes(view)) return;
   state.activeView = view;
+  if (view === "team") fetchRoster();
   document.querySelectorAll("[data-view-panel]").forEach((panel) => { panel.hidden = panel.dataset.viewPanel !== view; });
   document.querySelectorAll("[data-view]").forEach((button) => button.classList.toggle("is-active", button.dataset.view === view));
   window.scrollTo({ top: 0, behavior: "auto" });
+}
+
+/* ── 내 팀: 1군 등록 현황과 등록/말소 ────────────────────────────────────── */
+
+const ROSTER_API_URL = "/api/roster";
+const TRANSACTION_LABEL = { register: "등록", remove: "말소" };
+
+async function fetchRoster() {
+  const team = state.favoriteTeam;
+  if (!team || demoMode) return;
+  if (state.rosterState === "loading") return;
+  if (state.roster && state.roster.team === team) return;
+  state.rosterState = "loading";
+  renderTeam();
+  try {
+    const response = await fetch(`${ROSTER_API_URL}?team=${encodeURIComponent(team)}`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const payload = await response.json();
+    if (payload.team !== state.favoriteTeam) return;
+    state.roster = payload;
+    state.rosterState = "ready";
+  } catch (error) {
+    console.warn("Roster request failed", error);
+    state.rosterState = "error";
+  }
+  renderTeam();
+}
+
+function shortDate(isoDate) {
+  const [, month, day] = String(isoDate).split("-");
+  return `${Number(month)}/${Number(day)}`;
+}
+
+function transactionRowHtml(transaction) {
+  const kind = transaction.kind === "remove" ? "remove" : "register";
+  return `<li class="tx-row is-${kind}">
+      <span class="tx-kind">${escapeHtml(TRANSACTION_LABEL[kind])}</span>
+      <span class="tx-no">${escapeHtml(transaction.back_number || "")}</span>
+      <strong class="tx-name">${escapeHtml(transaction.player_name)}</strong>
+      <span class="tx-pos">${escapeHtml(transaction.position || "")}</span>
+    </li>`;
+}
+
+function todayChangesHtml(roster) {
+  const changes = roster.changes || {};
+  const label = formatKoreanDate(today);
+  if (Array.isArray(changes.today) && changes.today.length) {
+    return `<section class="card team-card">
+        <div class="team-card-head"><h2>오늘의 변동</h2><span>${escapeHtml(label)}</span></div>
+        <ul class="tx-list">${changes.today.map(transactionRowHtml).join("")}</ul>
+      </section>`;
+  }
+  // 조회한 날인데 0건인 것과 아직 수집하지 않은 것은 다르다. 같게 보여주면 안 된다.
+  const body = changes.checked_today
+    ? `<p class="team-quiet"><strong>변동 없음</strong>${changes.last_change_on ? `<span>마지막 변동 ${escapeHtml(formatKoreanDate(new Date(changes.last_change_on)))} · ${escapeHtml(changes.last_change_count)}건</span>` : ""}</p>`
+    : `<p class="team-quiet"><strong>오늘 기록을 아직 확인하지 못했습니다</strong><span>${roster.last_checked_on ? `마지막 확인 ${escapeHtml(formatKoreanDate(new Date(roster.last_checked_on)))}` : "수집 이력이 없습니다"}</span></p>`;
+  return `<section class="card team-card">
+      <div class="team-card-head"><h2>오늘의 변동</h2><span>${escapeHtml(label)}</span></div>
+      ${body}
+    </section>`;
+}
+
+function recentChangesHtml(roster) {
+  const rest = (roster.transactions || []).filter((transaction) => transaction.occurred_on !== toISODate(today));
+  if (!rest.length) return "";
+  const byDate = new Map();
+  for (const transaction of rest) {
+    if (!byDate.has(transaction.occurred_on)) byDate.set(transaction.occurred_on, []);
+    byDate.get(transaction.occurred_on).push(transaction);
+  }
+  const groups = [...byDate.entries()].slice(0, 8).map(([date, items]) => `<div class="tx-group">
+      <span class="tx-date">${escapeHtml(shortDate(date))}</span>
+      <ul class="tx-list">${items.map(transactionRowHtml).join("")}</ul>
+    </div>`).join("");
+  return `<section class="card team-card"><div class="team-card-head"><h2>최근 변동</h2><span>최근 30일</span></div>${groups}</section>`;
+}
+
+function rosterListHtml(roster) {
+  const entries = roster.entries || [];
+  if (!entries.length) return "";
+  const groups = ["투수", "포수", "내야수", "외야수"].map((position) => {
+    const players = entries.filter((entry) => entry.position === position);
+    if (!players.length) return "";
+    const items = players.map((player) => `<li><span class="tx-no">${escapeHtml(player.back_number || "")}</span><strong>${escapeHtml(player.player_name)}</strong><span class="tx-pos">${escapeHtml(player.bats_throws || "")}</span></li>`).join("");
+    return `<details class="lineup-fold"><summary>${escapeHtml(position)}<b>${players.length}명</b></summary><ul class="roster-list">${items}</ul></details>`;
+  }).join("");
+  return `<section class="card team-card"><div class="team-card-head"><h2>등록 명단</h2></div>${groups}</section>`;
+}
+
+function renderTeam() {
+  if (!dom.team) return;
+  if (!state.favoriteTeam) {
+    dom.team.innerHTML = `<div class="empty-hero"><h1>응원팀을 선택해 보세요</h1><p>팀을 고르면 1군 등록 현황과 등록·말소 변동을 보여드립니다.</p><button class="primary-button" type="button" data-choose-team>응원팀 선택</button></div>`;
+    const button = dom.team.querySelector("[data-choose-team]");
+    if (button) button.addEventListener("click", () => setActiveView("settings"));
+    return;
+  }
+  const roster = state.roster && state.roster.team === state.favoriteTeam ? state.roster : null;
+  if (!roster) {
+    dom.team.innerHTML = state.rosterState === "error"
+      ? `<div class="empty-hero"><h1>등록 현황을 불러오지 못했습니다</h1><p>잠시 후 다시 시도해 주세요.</p></div>`
+      : `<div class="empty-hero"><h1>${escapeHtml(state.favoriteTeam)} 등록 현황</h1><p>불러오는 중입니다.</p></div>`;
+    return;
+  }
+  const counts = roster.counts || {};
+  const tiles = ["투수", "포수", "내야수", "외야수"].map((position) => `<div class="count-tile"><strong>${escapeHtml(counts[position] ?? 0)}</strong><span>${escapeHtml(position)}</span></div>`).join("");
+  dom.team.innerHTML = `
+    <header class="team-heading" style="${teamStyle(state.favoriteTeam)}">
+      <span class="team-dot"></span>
+      <h1>${escapeHtml(state.favoriteTeam)}</h1>
+      <button class="text-button" type="button" data-view="settings">팀 변경</button>
+    </header>
+    <section class="card team-card">
+      <div class="team-card-head"><h2>1군 등록</h2><strong class="roster-total">${escapeHtml(counts.total ?? 0)}<span>명</span></strong></div>
+      <div class="count-grid">${tiles}</div>
+    </section>
+    ${todayChangesHtml(roster)}
+    ${recentChangesHtml(roster)}
+    ${rosterListHtml(roster)}
+    <p class="freshness">KBO 공식 등록 현황${roster.as_of ? ` · ${escapeHtml(roster.as_of)} 기준` : ""}</p>`;
+  dom.team.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => setActiveView(button.dataset.view)));
 }
 
 function renderAll() {
@@ -1114,6 +1242,7 @@ function renderAll() {
   renderNextGame();
   renderToday();
   renderSchedule();
+  renderTeam();
   renderIngestionStatus();
   setActiveView(state.activeView);
 }
