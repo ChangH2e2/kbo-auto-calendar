@@ -1506,7 +1506,7 @@ document.getElementById("shareGame").addEventListener("click", async () => {
 
 fetchGames();
 liveRefreshTimer = setInterval(refreshLiveData, 60 * 1000);
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch((error) => console.warn("PWA registration failed", error));
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch((error) => console.warn("PWA registration failed", error));
 dom.refreshNow.addEventListener("click", async () => {
   dom.refreshNow.disabled = true;
   dom.refreshNow.textContent = "갱신 중…";

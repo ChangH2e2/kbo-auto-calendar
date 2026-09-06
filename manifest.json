@@ -2,18 +2,18 @@
   "name": "KBO GameDay",
   "short_name": "KBO GameDay",
   "description": "KBO 경기 일정과 예매 시점을 한 흐름에서 확인합니다.",
-  "start_url": "./",
-  "scope": "./",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#f4f2eb",
   "theme_color": "#f4f2eb",
   "lang": "ko-KR",
   "icons": [
-    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
   ],
   "shortcuts": [
-    { "name": "오늘 경기", "short_name": "오늘", "url": "./?view=today", "icons": [{ "src": "./icon.svg", "sizes": "any" }] },
-    { "name": "전체 일정", "short_name": "일정", "url": "./?view=schedule", "icons": [{ "src": "./icon.svg", "sizes": "any" }] }
+    { "name": "오늘 경기", "short_name": "오늘", "url": "/?view=today", "icons": [{ "src": "/icon.svg", "sizes": "any" }] },
+    { "name": "전체 일정", "short_name": "일정", "url": "/?view=schedule", "icons": [{ "src": "/icon.svg", "sizes": "any" }] }
   ]
 }
