@@ -1179,7 +1179,7 @@ function recentChangesHtml(roster) {
     byDate.get(transaction.occurred_on).push(transaction);
   }
   const groups = [...byDate.entries()].slice(0, 8).map(([date, items]) => `<div class="tx-group">
-      <span class="tx-date">${escapeHtml(formatKoreanDate(new Date(date), { month: "numeric" }))}</span>
+      <span class="tx-date">${escapeHtml(date.slice(5).replace("-", "/").replace(/^0/, ""))}</span>
       <ul class="tx-list">${items.map(transactionRowHtml).join("")}</ul>
     </div>`).join("");
   return `<section class="card team-card"><div class="team-card-head"><h2>최근 변동</h2><span>최근 30일</span></div>${groups}</section>`;
