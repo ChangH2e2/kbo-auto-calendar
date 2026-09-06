@@ -47,7 +47,8 @@ const state = {
   ingestionStatus: null,
   ingestionRuns: {},
   ticketRules: { ...DEFAULT_TICKET_RULES },
-  detailTab: "score"
+  detailTab: "score",
+  detailLineupTeam: null
 };
 
 let countdownTimer = null;
@@ -414,13 +415,40 @@ async function fetchGames({ force = false } = {}) {
     dom.refreshStatus.textContent = "갱신 실패 · 이전 데이터를 확인하세요";
   }
   renderAll();
+  fetchPreviews();
+}
+
+// 프리뷰는 오늘 앞뒤 며칠만 가져온다. 전체 일정 요청에 붙이면 시즌치 라인업 JSON이 통째로 실린다.
+async function fetchPreviews() {
+  if (demoMode) return;
+  try {
+    const from = encodeURIComponent(toISODate(addDays(today, -1)));
+    const to = encodeURIComponent(toISODate(addDays(today, 2)));
+    const response = await fetch(`${API_URL}?from=${from}&to=${to}&include=preview`, { cache: "no-store" });
+    if (!response.ok) return;
+    const payload = await response.json();
+    const rows = Array.isArray(payload) ? payload : (payload.games || []);
+    if (!rows.length) return;
+    const previewById = new Map(rows.map((row) => [row.game_id, row.preview || null]));
+    state.games = state.games.map((game) => previewById.has(game.game_id)
+      ? { ...game, preview: previewById.get(game.game_id) } : game);
+    renderAll();
+    if (state.selectedGameId && dom.dialog.open) {
+      const selected = state.games.find((game) => game.game_id === state.selectedGameId);
+      if (selected) renderGameDetail(selected);
+    }
+  } catch (error) {
+    // 프리뷰가 없어도 화면은 완전히 동작한다. 조용히 넘어간다.
+    console.warn("Preview request failed", error);
+  }
 }
 
 function hasLiveRefreshWindow() {
   const now = Date.now();
+  // 선발 예고와 라인업은 경기 6시간 전부터 채워진다. 그때부터 따라간다.
   return state.games.some((game) => {
     const startsAt = parseGameDate(game).getTime();
-    return startsAt - 30 * 60 * 1000 <= now && now <= startsAt + 5 * 60 * 60 * 1000;
+    return startsAt - 6 * 60 * 60 * 1000 <= now && now <= startsAt + 5 * 60 * 60 * 1000;
   });
 }
 
@@ -428,7 +456,7 @@ async function refreshLiveData() {
   if (demoMode || liveRefreshInFlight || !hasLiveRefreshWindow()) return;
   liveRefreshInFlight = true;
   try {
-    const response = await fetch(`${API_URL}?from=${encodeURIComponent(toISODate(addDays(today, -2)))}&to=${encodeURIComponent(toISODate(addDays(today, 1)))}`, { cache: "no-store" });
+    const response = await fetch(`${API_URL}?from=${encodeURIComponent(toISODate(addDays(today, -2)))}&to=${encodeURIComponent(toISODate(addDays(today, 1)))}&include=preview`, { cache: "no-store" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const payload = await response.json();
     const rows = Array.isArray(payload) ? payload : (payload.games || []);
@@ -543,6 +571,117 @@ function setFavoriteTeam(team) {
   renderAll();
 }
 
+/* ── 경기 프리뷰: 선발 매치업과 라인업 ─────────────────────────────────────
+   데이터는 game_previews(네이버 preview)에서 오고 /api/games?include=preview로 실린다.
+   프리뷰가 없으면 블록 자체를 렌더하지 않는다. "정보 없음" 자리를 남기지 않는다. */
+
+const PITCH_LABELS = { FAST: "직구", TWOS: "투심", SINK: "싱커", CUTT: "커터", SLID: "슬라이더",
+  SWEE: "스위퍼", CURV: "커브", CHUP: "체인지업", FORK: "포크", SPLI: "스플리터", KNUC: "너클볼" };
+const POSITION_SHORT = { 선발투수: "선발", 투수: "투수", 포수: "포수", "1루수": "1루", "2루수": "2루",
+  "3루수": "3루", 유격수: "유격", 좌익수: "좌익", 중견수: "중견", 우익수: "우익", 지명타자: "지명" };
+
+function previewOf(game) {
+  const preview = game && game.preview;
+  return preview && preview.game_id ? preview : null;
+}
+
+function throwHand(hitType) {
+  const value = String(hitType || "");
+  const side = value.startsWith("좌") ? "좌완" : value.startsWith("우") ? "우완" : "";
+  if (!side) return "";
+  return value.includes("언더") ? `${side} 언더` : value.includes("사이드") ? `${side} 사이드` : side;
+}
+
+function mainPitch(starter) {
+  const pitches = Array.isArray(starter && starter.pitches) ? starter.pitches : [];
+  const best = pitches
+    .filter((pitch) => Number.isFinite(Number(pitch && pitch.speed)))
+    .sort((a, b) => Number(b.rate || 0) - Number(a.rate || 0))[0];
+  if (!best) return "";
+  return `${PITCH_LABELS[best.type] || best.type} ${Math.round(Number(best.speed))}km`;
+}
+
+function winLossText(record) {
+  if (!record || (record.w == null && record.l == null)) return "";
+  const parts = [`${record.w ?? 0}승`, `${record.l ?? 0}패`];
+  if (record.d) parts.push(`${record.d}무`);
+  return parts.join(" ");
+}
+
+function compareRowHtml(label, awayValue, homeValue, strong) {
+  if (!awayValue && !homeValue) return "";
+  const cell = (value, side) => `<span class="starter-value ${side}${strong ? " is-strong" : ""}">${escapeHtml(value || "-")}</span>`;
+  return `${cell(awayValue, "away")}<span class="starter-label">${escapeHtml(label)}</span>${cell(homeValue, "home")}`;
+}
+
+function starterHeadHtml(starter, side) {
+  if (!starter || !starter.name) return `<div class="starter-head ${side}"><span class="starter-name is-empty">선발 미정</span></div>`;
+  const hand = throwHand(starter.hitType);
+  return `<div class="starter-head ${side}">
+      <span class="starter-line">${starter.backnum ? `<span class="starter-no">${escapeHtml(starter.backnum)}</span>` : ""}<strong class="starter-name">${escapeHtml(starter.name)}</strong></span>
+      ${hand ? `<span class="starter-hand">${escapeHtml(hand)}</span>` : ""}
+    </div>`;
+}
+
+function starterMatchupHtml(preview) {
+  const away = preview.away_starter;
+  const home = preview.home_starter;
+  if (!away && !home) return "";
+  const vsEra = (starter) => (starter && starter.vsOpponent ? starter.vsOpponent.era : "") || "";
+  const rows = [
+    compareRowHtml("시즌 ERA", away && away.era, home && home.era, true),
+    compareRowHtml("승패", winLossText(away), winLossText(home)),
+    compareRowHtml("상대 ERA", vsEra(away), vsEra(home), true),
+    compareRowHtml("주무기", mainPitch(away), mainPitch(home))
+  ].filter(Boolean).join("");
+  return `<section class="starter-block">
+      <span class="block-label">선발 매치업</span>
+      <div class="starter-grid starter-heads">${starterHeadHtml(away, "away")}<span></span>${starterHeadHtml(home, "home")}</div>
+      ${rows ? `<div class="starter-grid starter-compare">${rows}</div>` : ""}
+    </section>`;
+}
+
+function teamRecordHtml(game, preview) {
+  const away = winLossText(preview.away_standing);
+  const home = winLossText(preview.home_standing);
+  if (!away && !home) return "";
+  // rank는 양 팀 모두 같은 값이 내려온 사례가 있어 쓰지 않는다. 승패만 신뢰한다.
+  return `<div class="team-records"><span>${escapeHtml(away)}</span><span>${escapeHtml(home)}</span></div>`;
+}
+
+function seasonVsHtml(game, preview) {
+  const record = preview.season_vs;
+  const awayWin = Number(record && record.awayWin);
+  const awayLoss = Number(record && record.awayLoss);
+  if (!Number.isFinite(awayWin) || !Number.isFinite(awayLoss) || awayWin + awayLoss === 0) return "";
+  const draw = Number(record.draw) || 0;
+  const summary = `${game.away} ${awayWin}승 · ${game.home} ${awayLoss}승${draw ? ` · ${draw}무` : ""}`;
+  return `<section class="season-vs">
+      <div class="season-vs-head"><span class="block-label">시즌 상대전적</span><span class="season-vs-text">${escapeHtml(summary)}</span></div>
+      <div class="season-vs-bar" role="img" aria-label="${escapeHtml(summary)}">
+        <span style="flex:${awayWin};${teamStyle(game.away)}"></span>
+        ${draw ? `<span class="is-draw" style="flex:${draw}"></span>` : ""}
+        <span style="flex:${awayLoss};${teamStyle(game.home)}"></span>
+      </div>
+    </section>`;
+}
+
+function lineupNoticeHtml(game, preview) {
+  const startsAt = parseGameDate(game);
+  if (preview.lineup_state === "announced") {
+    return `<button class="lineup-notice is-ready" type="button" data-open-lineup="${escapeHtml(game.game_id)}">라인업이 공개됐습니다<span aria-hidden="true">→</span></button>`;
+  }
+  if (toISODate(startsAt) !== toISODate(today) || startsAt.getTime() <= Date.now()) return "";
+  const openAt = new Date(startsAt.getTime() - 2 * 60 * 60 * 1000);
+  return `<p class="lineup-notice">라인업은 <strong>${escapeHtml(formatTime(openAt))}</strong> 전후 공개됩니다</p>`;
+}
+
+function previewBlocksHtml(game) {
+  const preview = previewOf(game);
+  if (!preview) return "";
+  return `${starterMatchupHtml(preview)}${seasonVsHtml(game, preview)}${lineupNoticeHtml(game, preview)}`;
+}
+
 function renderNextGame() {
   if (!state.favoriteTeam) {
     dom.nextGame.innerHTML = `<div class="empty-hero"><h1>응원팀을 선택해 보세요</h1><p>설정에서 팀을 고르면 다음 경기와 예매 정보를 맞춤으로 보여드립니다.</p><button class="primary-button" type="button" data-choose-team>응원팀 선택</button></div>`;
@@ -566,18 +705,22 @@ function renderNextGame() {
         <div class="team-side away" style="${teamStyle(game.away)}">
           <span class="team-role">원정</span>
           <strong class="team-name"><span class="team-token"></span>${escapeHtml(game.away)}</strong>
-          <span class="starter">${game.away_starter ? `선발 ${escapeHtml(game.away_starter)}` : "선발 미정"}</span>
+          ${previewOf(game) ? "" : `<span class="starter">${game.away_starter ? `선발 ${escapeHtml(game.away_starter)}` : "선발 미정"}</span>`}
         </div>
         <span class="matchup-versus">VS</span>
         <div class="team-side home" style="${teamStyle(game.home)}">
           <span class="team-role">홈</span>
           <strong class="team-name">${escapeHtml(game.home)}<span class="team-token"></span></strong>
-          <span class="starter">${game.home_starter ? `선발 ${escapeHtml(game.home_starter)}` : "선발 미정"}</span>
+          ${previewOf(game) ? "" : `<span class="starter">${game.home_starter ? `선발 ${escapeHtml(game.home_starter)}` : "선발 미정"}</span>`}
         </div>
       </div>
+      ${previewOf(game) ? teamRecordHtml(game, previewOf(game)) : ""}
       <div class="game-meta"><strong>${escapeHtml(game.stadium)}</strong>${game.broadcast ? ` / ${escapeHtml(game.broadcast)}` : ""}</div>
+      ${previewBlocksHtml(game)}
       ${shouldShowTicket(game) ? ticketPanelHtml(game, ticket) : ""}
     </article>`;
+  const openLineup = dom.nextGame.querySelector("[data-open-lineup]");
+  if (openLineup) openLineup.addEventListener("click", () => openGameDetail(openLineup.dataset.openLineup, "lineup"));
   updateCountdowns();
 }
 
@@ -733,11 +876,13 @@ function bindGameButtons(root) {
   root.querySelectorAll("[data-game-id]").forEach((button) => button.addEventListener("click", () => openGameDetail(button.dataset.gameId)));
 }
 
-function openGameDetail(gameId) {
+function openGameDetail(gameId, tab) {
   const game = state.games.find((item) => item.game_id === gameId);
   if (!game) return;
   state.selectedGameId = gameId;
-  state.detailTab = "score";
+  // 팀 토글 기본값은 응원팀. 응원팀이 이 경기에 없으면 원정팀이다.
+  state.detailLineupTeam = game.home === state.favoriteTeam ? "home" : "away";
+  state.detailTab = tab === "lineup" && hasLineupTab(game) ? "lineup" : "score";
   renderGameDetail(game);
   if (typeof dom.dialog.showModal === "function") dom.dialog.showModal();
   else dom.dialog.setAttribute("open", "");
@@ -774,14 +919,18 @@ function detailNote(game, status) {
 function detailContentHtml(game, status) {
   if (status === "scheduled") {
     const ticket = getTicket(game);
-    return `<section class="detail-card"><h2>예매 안내</h2><div class="detail-tab-panel">${shouldShowTicket(game, status) ? ticketPanelHtml(game, ticket, { compact: true }) : `<p class="detail-empty">예매 오픈 시점이 지난 경기입니다. 공식 예매처에서 현재 판매 상태를 확인해 주세요.</p>`}</div></section>`;
+    const preview = previewOf(game);
+    const previewCard = preview ? `<section class="detail-card"><div class="detail-preview">${starterMatchupHtml(preview)}${seasonVsHtml(game, preview)}</div></section>` : "";
+    const lineupCard = hasLineupTab(game) ? `<section class="detail-card"><h2>라인업</h2><div class="detail-tab-panel" id="detailTabPanel">${lineupPanelHtml(game)}</div></section>` : "";
+    return `<section class="detail-card"><h2>예매 안내</h2><div class="detail-tab-panel">${shouldShowTicket(game, status) ? ticketPanelHtml(game, ticket, { compact: true }) : `<p class="detail-empty">예매 오픈 시점이 지난 경기입니다. 공식 예매처에서 현재 판매 상태를 확인해 주세요.</p>`}</div></section>${previewCard}${lineupCard}`;
   }
   if (["cancelled", "postponed"].includes(status)) return `<section class="detail-card"><div class="detail-tab-panel"><p>${escapeHtml(detailNote(game, status))}</p><p class="detail-empty">새 일정이 확인되면 이 화면에 반영됩니다.</p></div></section>`;
   return `
     ${scoreboardHtml(game)}
     <section class="detail-card">
-      <div class="detail-tabs" role="tablist">
+      <div class="detail-tabs${hasLineupTab(game) ? " has-lineup" : ""}" role="tablist">
         <button class="${state.detailTab === "score" ? "is-active" : ""}" type="button" data-detail-tab="score">요약</button>
+        ${hasLineupTab(game) ? `<button class="${state.detailTab === "lineup" ? "is-active" : ""}" type="button" data-detail-tab="lineup">라인업</button>` : ""}
         <button class="${state.detailTab === "hitter" ? "is-active" : ""}" type="button" data-detail-tab="hitter">타자</button>
         <button class="${state.detailTab === "pitcher" ? "is-active" : ""}" type="button" data-detail-tab="pitcher">투수</button>
       </div>
@@ -806,7 +955,79 @@ function scoreboardHtml(game) {
     <section class="detail-card"><h2>이닝별 득점 <span class="inning-count">${inningCount}회</span></h2><div class="score-scroll" role="region" aria-label="이닝별 득점 표"><table class="scoreboard"><thead><tr><th class="sticky-team">팀</th>${innings}<th class="total-r">R</th><th class="total-h">H</th><th class="total-e">E</th></tr></thead><tbody>${row(game.away, away, awayTotals)}${row(game.home, home, homeTotals)}</tbody></table></div><p class="score-hint">전체 이닝과 R·H·E를 표시합니다. 표는 좌우로 밀어 확인할 수 있습니다.</p></section>`;
 }
 
+function lineupTeamSide(game) {
+  if (state.detailLineupTeam === "home" || state.detailLineupTeam === "away") return state.detailLineupTeam;
+  return game.home === state.favoriteTeam ? "home" : "away";
+}
+
+function lineupToggleHtml(game, side) {
+  return `<div class="lineup-toggle" role="tablist" aria-label="라인업 팀 선택">
+      ${["away", "home"].map((key) => {
+        const team = key === "home" ? game.home : game.away;
+        return `<button type="button" role="tab" aria-selected="${key === side}" class="${key === side ? "is-active" : ""}" data-lineup-team="${key}" style="${teamStyle(team)}"><span class="team-dot"></span>${escapeHtml(team)}</button>`;
+      }).join("")}
+    </div>`;
+}
+
+function lineupFoldHtml(title, players) {
+  if (!Array.isArray(players) || !players.length) return "";
+  // 불펜·대기 타자에는 소스에 등번호가 없다. 지어내지 않는다.
+  const items = players.map((player) => `<li><strong>${escapeHtml(player.name)}</strong><span>${escapeHtml(player.hitType || player.position || "")}</span></li>`).join("");
+  return `<details class="lineup-fold"><summary>${escapeHtml(title)}<b>${players.length}명</b></summary><ul class="lineup-fold-list">${items}</ul></details>`;
+}
+
+function lineupPanelHtml(game) {
+  const preview = previewOf(game);
+  if (!preview) return `<div class="detail-empty">라인업 정보가 아직 수집되지 않았습니다.</div>`;
+  const side = lineupTeamSide(game);
+  const lineup = Array.isArray(preview[`${side}_lineup`]) ? preview[`${side}_lineup`] : [];
+  const starter = lineup.find((player) => !Number.isInteger(Number(player.batorder))) || preview[`${side}_starter`] || null;
+  const batters = lineup
+    .filter((player) => Number.isInteger(Number(player.batorder)))
+    .sort((a, b) => Number(a.batorder) - Number(b.batorder));
+  const starterRow = starter && starter.name
+    ? `<div class="lineup-starter"><span class="lineup-starter-label">${batters.length ? "선발" : "선발 예고"}</span>${starter.backnum ? `<span class="lineup-no">${escapeHtml(starter.backnum)}</span>` : ""}<strong>${escapeHtml(starter.name)}</strong><span class="lineup-hand">${escapeHtml(throwHand(starter.hitType))}</span></div>`
+    : "";
+  const checked = preview.checked_at ? new Date(preview.checked_at) : null;
+  const checkedText = checked && !Number.isNaN(checked.getTime()) ? `${formatTime(checked)} 확인` : "";
+
+  if (batters.length < 9) {
+    return `${lineupToggleHtml(game, side)}
+      <div class="lineup-pending">
+        <strong>아직 발표되지 않았습니다</strong>
+        <span>보통 경기 시작 1~2시간 전에 공개됩니다</span>
+      </div>
+      ${starterRow}
+      ${checkedText ? `<p class="lineup-source">${escapeHtml(checkedText)}</p>` : ""}`;
+  }
+
+  const rows = batters.map((player) => {
+    const position = POSITION_SHORT[player.positionName] || player.positionName || "-";
+    return `<div class="lineup-row"><span class="lineup-order">${escapeHtml(player.batorder)}</span><span class="lineup-pos">${escapeHtml(position)}</span><span class="lineup-no">${escapeHtml(player.backnum || "")}</span><strong class="lineup-name">${escapeHtml(player.name)}</strong><span class="lineup-hand">${escapeHtml(player.batsThrows || "")}</span></div>`;
+  }).join("");
+
+  const note = getGameState(game) === "scheduled" ? "" : `<p class="lineup-source">예고 라인업입니다. 실제 출장 기록은 타자·투수 탭에서 확인하세요.</p>`;
+  return `${lineupToggleHtml(game, side)}
+    ${starterRow}
+    <div class="lineup-table">
+      <div class="lineup-row is-head"><span>타순</span><span>포지션</span><span>번호</span><span>이름</span><span>투타</span></div>
+      ${rows}
+    </div>
+    ${lineupFoldHtml("불펜 가용", preview[`${side}_bullpen`])}
+    ${lineupFoldHtml("대기 타자", preview[`${side}_bench`])}
+    ${note}
+    ${checkedText ? `<p class="lineup-source">네이버 스포츠 · ${escapeHtml(checkedText)}</p>` : ""}`;
+}
+
+function hasLineupTab(game) {
+  const preview = previewOf(game);
+  if (!preview) return false;
+  return Boolean(preview.away_starter || preview.home_starter
+    || (preview.away_lineup && preview.away_lineup.length) || (preview.home_lineup && preview.home_lineup.length));
+}
+
 function detailTabHtml(game) {
+  if (state.detailTab === "lineup") return lineupPanelHtml(game);
   if (state.detailTab === "score") return `<p>${getGameState(game) === "live" ? "현재 경기 상태를 표시하고 있습니다." : "종료된 경기의 공식 스코어를 표시합니다."}</p>`;
   const details = state.detailTab === "hitter" ? game.hitter_details : game.pitcher_details;
   if (!details || (!details.away?.length && !details.home?.length)) return `<div class="detail-empty">상세 기록이 아직 수집되지 않았습니다.</div>`;
@@ -847,6 +1068,10 @@ function batterRoleText(row, isSubstitute = false) {
 function bindDetailInteractions(game) {
   dom.dialogBody.querySelectorAll("[data-detail-tab]").forEach((button) => button.addEventListener("click", () => {
     state.detailTab = button.dataset.detailTab;
+    renderGameDetail(game);
+  }));
+  dom.dialogBody.querySelectorAll("[data-lineup-team]").forEach((button) => button.addEventListener("click", () => {
+    state.detailLineupTeam = button.dataset.lineupTeam;
     renderGameDetail(game);
   }));
 }
