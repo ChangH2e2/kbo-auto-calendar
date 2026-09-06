@@ -1,7 +1,11 @@
 name: KBO-Bot
 on:
   schedule:
-    - cron: '*/10 * * * *' # 경기 중 점수 반영을 위해 10분마다 실행
+    # 시즌 일정과 최근 박스스코어만 담당한다.
+    # 경기 중 점수·이닝과 프리뷰는 Cloudflare 크론(workers/live-cron → /api/live-refresh)이 1분마다 갱신한다.
+    # GitHub의 schedule 이벤트는 요청한 주기를 지키지 않는다 — 2026-09-05~06 실측으로 '*/10'이
+    # 실제로는 105~280분 간격으로 왔다. 라이브 데이터를 여기에 걸어 두면 안 된다.
+    - cron: '*/30 * * * *'
   workflow_dispatch: 
 
 concurrency:
@@ -29,10 +33,9 @@ jobs:
           KBO_INGEST_URL: ${{ secrets.KBO_INGEST_URL }}
           KBO_INGEST_TOKEN: ${{ secrets.KBO_INGEST_TOKEN }}
           HOLIDAY_API_KEY: ${{ secrets.HOLIDAY_API_KEY }}
-          # 오늘 경기의 이닝·선수 상태를 실시간에 가깝게 보강한다.
+          # 아래 세 플래그는 Cloudflare 크론이 멈췄을 때를 대비한 이중화다. 주 경로가 아니다.
           KBO_COLLECT_DETAILS: '1'
           KBO_DETAIL_WINDOW_DAYS: '0'
-          # 네이버 game-polling으로 오늘 경기 점수·이닝·상태를 보강한다.
           KBO_NAVER_LIVE: '1'
           KBO_COLLECT_PREVIEWS: '1'
         run: python crawling.py

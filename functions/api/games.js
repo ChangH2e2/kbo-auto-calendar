@@ -52,8 +52,10 @@ export async function onRequestGet(context) {
       }
       return result;
     });
+    // 진행 중인 경기가 있으면 엣지 캐시를 짧게 잡는다. 60초 캐시는 분 단위 갱신을 그대로 지운다.
+    const hasLive = responseGames.some((game) => game.status === "live");
     return Response.json({ games: responseGames, data_updated_at: latestGameDataTimestamp(games) }, {
-      headers: { "Cache-Control": "public, max-age=30, s-maxage=60" }
+      headers: { "Cache-Control": hasLive ? "public, max-age=5, s-maxage=10" : "public, max-age=30, s-maxage=60" }
     });
   } catch (error) {
     return Response.json({ error: "KBO 데이터 조회에 실패했습니다." }, { status: 500 });

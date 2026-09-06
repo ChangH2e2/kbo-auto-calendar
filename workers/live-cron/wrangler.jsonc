@@ -1,0 +1,14 @@
+{
+  // 라이브 갱신 전용 크론 워커. 로직은 전부 Pages의 /api/live-refresh에 있고
+  // 이 워커는 1분마다 그것을 호출하는 일만 한다.
+  // GitHub Actions의 schedule은 10분 크론을 걸어도 실제로는 2시간대에 한 번만 오기 때문에
+  // (2026-09-05~06 실측 105~280분) 라이브 갱신은 Cloudflare 크론으로 옮긴다.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "kbo-gameday-live-cron",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-06",
+  "workers_dev": false,
+  "observability": { "enabled": true },
+  "triggers": { "crons": ["* * * * *"] },
+  "vars": { "TARGET_URL": "https://kbo-gameday.pages.dev/api/live-refresh" }
+}
