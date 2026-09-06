@@ -1,6 +1,9 @@
 const API_URL = "/api/games";
 const TICKET_POLICY_API_URL = "/api/ticket-policies";
 const DATA_STALE_AFTER_MS = 8 * 60 * 60 * 1000;
+const LIVE_FRESH_AFTER_MS = 5 * 60 * 1000;
+// GitHub Actions의 schedule은 실제로 2시간대에 한 번 온다. 30분 임계는 상시 경고가 된다.
+const SCHEDULE_STALE_AFTER_MS = 6 * 60 * 60 * 1000;
 
 const TEAMS = ["KIA", "KT", "LG", "NC", "SSG", "두산", "롯데", "삼성", "키움", "한화"];
 const TEAM_COLORS = {
@@ -42,6 +45,7 @@ const state = {
   dataTimestamp: null,
   sourceState: demoMode ? "sample" : "loading",
   ingestionStatus: null,
+  ingestionRuns: {},
   ticketRules: { ...DEFAULT_TICKET_RULES },
   detailTab: "score"
 };
@@ -365,10 +369,13 @@ async function fetchIngestionStatus() {
   try {
     const response = await fetch("/api/ingestion-status", { cache: "no-store" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    state.ingestionStatus = (await response.json()).run || null;
+    const payload = await response.json();
+    state.ingestionStatus = payload.run || null;
+    state.ingestionRuns = payload.runs || (payload.run ? { [payload.run.job_type]: payload.run } : {});
   } catch (error) {
     console.warn("Ingestion status request failed", error);
     state.ingestionStatus = null;
+    state.ingestionRuns = {};
   }
 }
 
@@ -466,22 +473,41 @@ function renderNotice() {
   }
 }
 
+function finishedAt(run) {
+  if (!run || !run.finished_at) return null;
+  const value = new Date(run.finished_at);
+  return Number.isNaN(value.getTime()) ? null : value;
+}
+
+// 수집이 두 갈래다. 경기 중 점수는 Cloudflare 크론이 1분마다, 시즌 일정은 GitHub Actions가
+// 훨씬 느리게 갱신한다. 하나의 임계값으로 묶으면 어느 쪽이 멈췄는지 알 수 없다.
 function renderIngestionStatus() {
   if (!dom.ingestionStatus) return;
-  const run = state.ingestionStatus;
-  if (!run) {
+  const runs = state.ingestionRuns || {};
+  const live = runs.live;
+  const schedule = runs.games;
+  if (!live && !schedule) {
+    dom.ingestionStatus.className = "source-status is-warning";
     dom.ingestionStatus.textContent = "수집 실행 기록을 확인할 수 없습니다";
     return;
   }
-  const finished = run.finished_at ? new Date(run.finished_at) : null;
-  const time = finished && !Number.isNaN(finished.getTime()) ? formatTime(finished) : "시간 미상";
-  const isDelayed = finished && Date.now() - finished.getTime() > 30 * 60 * 1000;
-  dom.ingestionStatus.className = `source-status ${run.status === "success" && !isDelayed ? "is-healthy" : "is-warning"}`;
-  dom.ingestionStatus.textContent = run.status === "success" && !isDelayed
-    ? `수집 정상 · ${time} · ${run.accepted_count}건 반영`
-    : run.status === "success"
+  const liveFinished = finishedAt(live);
+  const liveFresh = liveFinished && Date.now() - liveFinished.getTime() <= LIVE_FRESH_AFTER_MS;
+  if (liveFresh && live.status === "success") {
+    dom.ingestionStatus.className = "source-status is-healthy";
+    dom.ingestionStatus.textContent = `실시간 갱신 중 · ${formatTime(liveFinished)}`;
+    return;
+  }
+  const scheduleFinished = finishedAt(schedule);
+  const time = scheduleFinished ? formatTime(scheduleFinished) : "시간 미상";
+  const isDelayed = !scheduleFinished || Date.now() - scheduleFinished.getTime() > SCHEDULE_STALE_AFTER_MS;
+  const failed = (schedule && schedule.status !== "success") || (live && !liveFresh && live.status !== "success");
+  dom.ingestionStatus.className = `source-status ${!failed && !isDelayed ? "is-healthy" : "is-warning"}`;
+  dom.ingestionStatus.textContent = failed
+    ? `수집 실패 · ${time} · 이전 데이터 유지`
+    : isDelayed
       ? `수집 지연 · 마지막 성공 ${time} · 이전 데이터 유지`
-      : `수집 실패 · ${time} · 이전 데이터 유지`;
+      : `수집 정상 · ${time} · ${schedule ? schedule.accepted_count : 0}건 반영`;
 }
 
 function freshnessText() {

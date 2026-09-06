@@ -167,12 +167,17 @@ export async function onRequestPost(context) {
     statements.push(db.prepare(PREVIEW_UPSERT).bind(...previewValues(row)));
   }
 
-  const id = crypto.randomUUID();
+  // 1분마다 도는 작업이라 실행마다 행을 남기면 시즌 동안 수만 행이 쌓인다.
+  // KST 시간 단위로 한 행만 두고 최신 실행 결과로 덮어쓴다.
+  const id = `live-${new Date(now + KST_OFFSET_MS).toISOString().slice(0, 13)}`;
+  const fetched = liveTargets.length + previewTargets.length;
   const log = (status, accepted, error = null) => db.prepare(`INSERT INTO ingestion_runs
     (id,job_type,started_at,finished_at,status,fetched_count,accepted_count,rejected_count,error_summary)
-    VALUES (?,'live',?,?,?,?,?,?,?)`)
-    .bind(id, startedAt, new Date().toISOString(), status,
-      liveTargets.length + previewTargets.length, accepted, 0, error);
+    VALUES (?1,'live',?2,?3,?4,?5,?6,0,?7)
+    ON CONFLICT(id) DO UPDATE SET started_at=excluded.started_at,finished_at=excluded.finished_at,
+      status=excluded.status,fetched_count=excluded.fetched_count,
+      accepted_count=excluded.accepted_count,error_summary=excluded.error_summary`)
+    .bind(id, startedAt, new Date().toISOString(), status, fetched, accepted, error);
 
   if (!statements.length) {
     // 네이버가 응답하지 않아도 기존 데이터는 그대로 둔다.
