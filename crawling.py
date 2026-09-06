@@ -423,7 +423,19 @@ if __name__ == "__main__":
     print(f"🎉 Cloudflare D1 업데이트 완료! (총 {len(data)}건)")
     # Games must exist before writing previews (foreign key).
     try:
-        previews = collect_previews(data)
+        preview_games = data
+        if COLLECT_PREVIEWS:
+            # A schedule source may omit an existing game temporarily (e.g. just before first pitch).
+            # Read persisted IDs without altering the games ingestion payload.
+            today_key = korea_today().isoformat()
+            try:
+                stored = requests.get(f'{ingest_url}/api/games',
+                    params={'from': today_key, 'to': today_key}, timeout=10)
+                stored.raise_for_status()
+                preview_games = stored.json()['games']
+            except Exception as exc:
+                print(f'프리뷰 대상 조회 실패, 수집 일정 사용: {type(exc).__name__}')
+        previews = collect_previews(preview_games)
         if previews:
             preview_response = requests.post(f'{ingest_url}/api/preview-ingest', json={'previews': previews},
                 headers={'Authorization': f'Bearer {ingest_token}'}, timeout=30)

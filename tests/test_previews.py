@@ -6,6 +6,19 @@ import requests
 import crawling
 
 class PreviewTests(unittest.TestCase):
+    def test_window_boundaries_and_doubleheader_matching(self):
+        games = [{'game_id':f'20260906HHLT{n}','date':'2026-09-06','time':'17:00','away':'한화','home':'롯데'} for n in [1,2]]
+        schedule = Mock()
+        schedule.json.return_value = {'result':{'games':[{'gameId':g['game_id']+'2026','gameDate':g['date'],'awayTeamName':g['away'],'homeTeamName':g['home']} for g in games]}}
+        preview = Mock()
+        preview.json.return_value = {'result':{'previewData':{'awayStarter':{'playerInfo':{'name':'선발'}}}}}
+        with patch.object(crawling,'COLLECT_PREVIEWS',True):
+            for hour in [11,17]:
+                with patch.object(crawling.requests,'get',side_effect=[schedule,preview,preview]) as get:
+                    result = crawling.collect_previews(games,datetime.datetime(2026,9,6,hour,tzinfo=crawling.KST))
+                    self.assertEqual([p['source_game_id'] for p in result],['20260906HHLT12026','20260906HHLT22026'])
+                    self.assertEqual(get.call_count,3)
+
     def test_failure_leaves_games_unchanged(self):
         games = [{'game_id':'20260906HHLT0','date':'2026-09-06','time':'17:00','away':'한화','home':'롯데'}]
         before = copy.deepcopy(games)
