@@ -652,3 +652,12 @@ P5(알림·iCal)와 P6(순위·매직넘버·날씨)는 P1~P4의 실사용 반�
 
 - P5는 **iCal 구독(`/api/calendar/{team}.ics`)을 먼저** 낸다. 푸시보다 싸고 유지비가 0에 가깝다.
 - P6의 순위·팀 성적은 **P0에서 이미 저장되므로 추가 수집이 없다.** 화면 작업만 남는다.
+
+
+### P0 운영 검증 (2026-09-06 13:55 KST)
+
+- migration 0010 및 Pages Functions 운영 배포 완료. GitHub Actions 실행 `34012673328` 성공, `ingestion_runs`에 `job_type=preview`, accepted_count=5 확인.
+- 오늘 5건 저장: NC-키움은 이미 announced(양 팀 타순 9명), 삼성-LG / 한화-롯데 / 두산-SSG / KT-KIA는 starter_only. 이미 발표된 경기를 starter_only로 낮춰 저장하지 않는다.
+- 기본 `/api/games` 필드 유지 및 `?include=preview`에서만 JSON 객체 반환 확인. Node 14개·Python 10개 테스트 통과.
+- 17시 경기의 경기 1시간 전 announced 전이는 아직 실측 대기. 10분 크론으로 재수집하며 발표 전후의 실제 데이터만으로 검증해야 한다.
+- KBO 폴백 ajax 경로는 Main.aspx 및 LineUp.aspx의 JS에서 확인했다. GetLineUpAnalysis 직접 POST는 이 실행 환경에서 HTTP 200 HTML을 반환하여 JSON 응답까지는 검증하지 못했다.
