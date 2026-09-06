@@ -66,6 +66,7 @@ const state = {
   roster: null,
   players: null,
   standings: null,
+  push: { supported: false, permission: "default", subscribed: false, topics: ["lineup", "final"], busy: false },
   standingsState: "idle",
   playersState: "idle",
   rosterState: "idle",
@@ -83,6 +84,8 @@ const dom = {
   notice: document.getElementById("dataNotice"),
   nextGame: document.getElementById("nextGameMount"),
   team: document.getElementById("teamMount"),
+  push: document.getElementById("pushMount"),
+  pushSection: document.getElementById("pushSection"),
   playerDialog: document.getElementById("playerDialog"),
   playerSheet: document.getElementById("playerSheetBody"),
   todayGames: document.getElementById("todayGamesMount"),
@@ -1488,6 +1491,110 @@ function openPendingGame() {
   openGameDetail(game.game_id);
 }
 
+/* ── 경기 알림(웹 푸시) ──────────────────────────────────────────────────
+   페이로드 없는 푸시를 보내고 서비스 워커가 내용을 받아 온다. */
+
+const PUSH_TOPIC_LABELS = { lineup: "라인업 공개", final: "경기 종료" };
+
+function pushSupported() {
+  return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+}
+
+function base64UrlToUint8Array(value) {
+  const padded = (value + "=".repeat((4 - (value.length % 4)) % 4)).replace(/-/g, "+").replace(/_/g, "/");
+  const binary = atob(padded);
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+}
+
+async function refreshPushState() {
+  state.push.supported = pushSupported();
+  if (!state.push.supported) return renderPush();
+  state.push.permission = Notification.permission;
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+    state.push.subscribed = Boolean(subscription);
+  } catch (error) {
+    console.warn("Push state check failed", error);
+    state.push.subscribed = false;
+  }
+  renderPush();
+}
+
+async function enablePush() {
+  if (!state.favoriteTeam) return setActiveView("settings");
+  state.push.busy = true;
+  renderPush();
+  try {
+    const permission = await Notification.requestPermission();
+    state.push.permission = permission;
+    if (permission !== "granted") return;
+    const keyResponse = await fetch("/api/push/key");
+    const { key } = await keyResponse.json();
+    if (!key) throw new Error("서버에 알림 키가 없습니다.");
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true, applicationServerKey: base64UrlToUint8Array(key)
+    });
+    const response = await fetch("/api/push/subscribe", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ endpoint: subscription.endpoint, team: state.favoriteTeam, topics: state.push.topics })
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    state.push.subscribed = true;
+  } catch (error) {
+    console.error("Push subscribe failed", error);
+    state.push.subscribed = false;
+  } finally {
+    state.push.busy = false;
+    renderPush();
+  }
+}
+
+async function disablePush() {
+  state.push.busy = true;
+  renderPush();
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+    if (subscription) {
+      await fetch("/api/push/unsubscribe", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint: subscription.endpoint }) });
+      await subscription.unsubscribe();
+    }
+    state.push.subscribed = false;
+  } catch (error) {
+    console.error("Push unsubscribe failed", error);
+  } finally {
+    state.push.busy = false;
+    renderPush();
+  }
+}
+
+function renderPush() {
+  if (!dom.push) return;
+  if (!state.push.supported) {
+    dom.push.innerHTML = `<p class="settings-hint">이 브라우저는 웹 알림을 지원하지 않습니다. iPhone은 홈 화면에 추가한 뒤에 사용할 수 있습니다.</p>`;
+    return;
+  }
+  if (!state.favoriteTeam) {
+    dom.push.innerHTML = `<p class="settings-hint">응원팀을 먼저 선택하면 그 팀 경기 알림을 받을 수 있습니다.</p>`;
+    return;
+  }
+  const topics = state.push.topics.map((topic) => PUSH_TOPIC_LABELS[topic]).join(" · ");
+  if (state.push.permission === "denied") {
+    dom.push.innerHTML = `<p class="settings-hint">브라우저에서 이 사이트의 알림이 차단돼 있습니다. 사이트 설정에서 허용으로 바꿔 주세요.</p>`;
+    return;
+  }
+  dom.push.innerHTML = state.push.subscribed
+    ? `<p class="push-state is-on"><strong>${escapeHtml(state.favoriteTeam)} 경기 알림을 받는 중</strong><span>${escapeHtml(topics)}</span></p>
+       <button class="secondary-button" type="button" data-push="off"${state.push.busy ? " disabled" : ""}>알림 끄기</button>`
+    : `<p class="settings-hint">${escapeHtml(state.favoriteTeam)}의 <strong>${escapeHtml(topics)}</strong>를 알려 드립니다. 이 기기에만 적용됩니다.</p>
+       <button class="primary-button" type="button" data-push="on"${state.push.busy ? " disabled" : ""}>${state.push.busy ? "설정 중…" : "알림 받기"}</button>`;
+  dom.push.querySelectorAll("[data-push]").forEach((button) => button.addEventListener("click", () =>
+    (button.dataset.push === "on" ? enablePush() : disablePush())));
+}
+
 function renderAll() {
   renderNotice();
   renderFavoriteTeam();
@@ -1496,6 +1603,7 @@ function renderAll() {
   renderSchedule();
   renderTeam();
   renderIngestionStatus();
+  renderPush();
   setActiveView(state.activeView);
   openPendingGame();
 }
@@ -1602,7 +1710,11 @@ document.getElementById("shareGame").addEventListener("click", async () => {
 
 fetchGames();
 liveRefreshTimer = setInterval(refreshLiveData, 60 * 1000);
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch((error) => console.warn("PWA registration failed", error));
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js")
+    .then(() => refreshPushState())
+    .catch((error) => console.warn("PWA registration failed", error));
+}
 dom.refreshNow.addEventListener("click", async () => {
   dom.refreshNow.disabled = true;
   dom.refreshNow.textContent = "갱신 중…";
