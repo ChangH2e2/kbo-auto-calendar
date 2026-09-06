@@ -20,10 +20,18 @@ test('라이브 대상은 시작 20분 전 ~ 6시간 뒤이고 종료된 경기�
   assert.equal(isLiveTarget(game(), startsAt - 21 * 60 * 1000), false);
   assert.equal(isLiveTarget(game(), startsAt + 6 * 60 * 60 * 1000), true);
   assert.equal(isLiveTarget(game(), startsAt + 6 * 60 * 60 * 1000 + 1), false);
-  for (const status of ['final', 'cancelled', 'postponed']) {
+  for (const status of ['cancelled', 'postponed']) {
     assert.equal(isLiveTarget(game({ status }), startsAt + 60 * 1000), false, status);
   }
   assert.equal(isLiveTarget(game({ id: 'bad-id' }), startsAt), false);
+});
+
+test('끝난 경기는 박스스코어가 아직 없을 때만 한 번 더 본다', () => {
+  const now = startsAt + 60 * 60 * 1000;
+  assert.equal(isLiveTarget(game({ status: 'final', has_boxscore: 0 }), now), true, '기록이 없으면 받으러 간다');
+  assert.equal(isLiveTarget(game({ status: 'final', has_boxscore: 1 }), now), false, '이미 받았으면 그만');
+  assert.equal(isLiveTarget(game({ status: 'cancelled', has_boxscore: 0 }), now), false, '취소 경기는 기록이 없다');
+  assert.equal(isLiveTarget(game({ status: 'final', has_boxscore: 0 }), startsAt + 7 * 60 * 60 * 1000), false, '창 밖이면 그만');
 });
 
 test('프리뷰는 라인업이 확정되면 더 부르지 않고, 4분 간격을 지킨다', () => {
