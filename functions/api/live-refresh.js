@@ -4,7 +4,7 @@
 // 이 엔드포인트는 Cloudflare Worker 크론(workers/live-cron)이 1분마다 호출한다.
 import { normalizePreview, PREVIEW_UPSERT, previewValues } from './preview-ingest.js';
 import { dispatchEvents } from './push/dispatch.js';
-import { normalizeBoxscore } from './boxscore.js';
+import { normalizeBoxscore, parseRelayResults, mergeInningResults } from './boxscore.js';
 
 const NAVER_GAMES = 'https://api-gw.sports.naver.com/schedule/games';
 const NAVER_HEADERS = { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' };
@@ -94,6 +94,13 @@ export function normalizePolling(polling) {
   return Object.keys(patch).length ? patch : null;
 }
 
+// "8회말" → 8. 경기 중 문자중계를 어느 이닝으로 받을지 정하는 데 쓴다.
+export function inningOf(statusNote) {
+  const match = String(statusNote || "").match(/(\d+)\s*회/);
+  const inning = match ? Number(match[1]) : NaN;
+  return Number.isInteger(inning) && inning >= 1 && inning <= 25 ? inning : null;
+}
+
 export function buildLiveUpdate(gameId, patch, updatedAt) {
   const keys = LIVE_FIELDS.filter((key) => key in patch);
   if (!keys.length) return null;
@@ -131,7 +138,7 @@ export async function onRequestPost(context) {
   let games = [];
   try {
     const result = await db.prepare(`SELECT g.id, g.starts_at, g.status, g.away_team, g.home_team,
-        (g.hitter_details IS NOT NULL) AS has_boxscore,
+        (g.hitter_details IS NOT NULL) AS has_boxscore, g.hitter_details,
         p.lineup_state, p.checked_at AS preview_checked_at
       FROM games g LEFT JOIN game_previews p ON p.game_id = g.id
       WHERE g.date = ?1 ORDER BY g.starts_at ASC`).bind(today).all();
@@ -163,6 +170,18 @@ export async function onRequestPost(context) {
       const record = await fetchJson(`${NAVER_GAMES}/${sourceId}/record`);
       const boxscore = normalizeBoxscore(record?.result?.recordData);
       if (boxscore) {
+        // 박스스코어의 이닝별 결과(inn1..inn25)는 경기가 끝나야 채워진다.
+        // 진행 중에는 현재 이닝의 문자중계에서 뽑아 기존 기록 위에 얹는다.
+        const inning = patch.status === 'live' ? inningOf(patch.status_note) : null;
+        if (inning) {
+          const relay = await fetchJson(`${NAVER_GAMES}/${sourceId}/relay?inning=${inning}`);
+          const plays = parseRelayResults(relay?.result?.textRelayData);
+          if (plays.length) {
+            let previous = null;
+            try { previous = game.hitter_details ? JSON.parse(game.hitter_details) : null; } catch { previous = null; }
+            mergeInningResults(boxscore.hitter_details, previous, plays);
+          }
+        }
         patch.hitter_details = JSON.stringify(boxscore.hitter_details);
         patch.pitcher_details = JSON.stringify(boxscore.pitcher_details);
         recorded += 1;
