@@ -99,3 +99,6 @@ export async function onRequestGet(context) {
     return new Response("일정을 불러오지 못했습니다.", { status: 500 });
   }
 }
+
+// 일부 캘린더 클라이언트는 구독 전에 HEAD로 확인한다. Pages는 HEAD를 GET으로 넘겨주지 않는다.
+export const onRequestHead = onRequestGet;
