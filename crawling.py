@@ -18,6 +18,60 @@ COLLECT_DETAILS = os.environ.get("KBO_COLLECT_DETAILS", "0") == "1"
 DETAIL_WINDOW_DAYS = int(os.environ.get("KBO_DETAIL_WINDOW_DAYS", "14"))
 NAVER_LIVE = os.environ.get("KBO_NAVER_LIVE", "0") == "1"
 KST = datetime.timezone(datetime.timedelta(hours=9))
+COLLECT_PREVIEWS = os.environ.get('KBO_COLLECT_PREVIEWS', '0') == '1'
+
+def collect_previews(games, now=None):
+    """Independent preview payloads: never mutate games or fail its ingestion."""
+    if not COLLECT_PREVIEWS:
+        return []
+    now = (now or datetime.datetime.now(KST)).astimezone(KST)
+    targets = []
+    for game in games:
+        try:
+            start = datetime.datetime.fromisoformat(f"{game['date']}T{game['time']}:00+09:00")
+            if (start.date() == now.date() and datetime.timedelta(0) <= start - now <= datetime.timedelta(hours=6)
+                    and not game.get('is_cancel') and game.get('status') not in ('cancelled', 'postponed', 'final')):
+                targets.append(game)
+        except (KeyError, TypeError, ValueError):
+            continue
+    if not targets:
+        return []
+    headers = {'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0'}
+    base = 'https://api-gw.sports.naver.com/schedule/games'
+    try:
+        response = requests.get(base, params={'fromDate': now.date().isoformat(),
+            'toDate': now.date().isoformat(), 'categoryId': 'kbo'}, headers=headers, timeout=8)
+        response.raise_for_status()
+        schedule = response.json()['result']['games']
+        if not isinstance(schedule, list):
+            raise ValueError('Invalid schedule')
+    except Exception as exc:
+        print(f'프리뷰 일정 수집 실패: {type(exc).__name__}')
+        return []
+    previews = []
+    for game in targets:
+        # Full ID includes the doubleheader game number; do not match by teams alone.
+        matches = [row for row in schedule if isinstance(row, dict)
+            and row.get('gameDate') == game['date'] and row.get('awayTeamName') == game['away']
+            and row.get('homeTeamName') == game['home']
+            and row.get('gameId') == game['game_id'] + game['date'][:4]]
+        if len(matches) != 1:
+            print(f"프리뷰 경기 매칭 제외: {game['game_id']}")
+            continue
+        source_id = matches[0]['gameId']
+        try:
+            response = requests.get(f'{base}/{source_id}/preview', headers=headers, timeout=8)
+            response.raise_for_status()
+            data = response.json().get('result', {}).get('previewData')
+            if data is None:
+                data = {}
+            if not isinstance(data, dict):
+                raise ValueError('Invalid preview')
+            previews.append({'game_id': game['game_id'], 'source_game_id': source_id,
+                'checked_at': datetime.datetime.now(KST).isoformat(), 'previewData': data})
+        except Exception as exc:
+            print(f'프리뷰 수집 실패 ({source_id}): {type(exc).__name__}')
+    return previews
 
 def korea_today():
     return datetime.datetime.now(KST).date()
@@ -367,3 +421,13 @@ if __name__ == "__main__":
     )
     response.raise_for_status()
     print(f"🎉 Cloudflare D1 업데이트 완료! (총 {len(data)}건)")
+    # Games must exist before writing previews (foreign key).
+    try:
+        previews = collect_previews(data)
+        if previews:
+            preview_response = requests.post(f'{ingest_url}/api/preview-ingest', json={'previews': previews},
+                headers={'Authorization': f'Bearer {ingest_token}'}, timeout=30)
+            preview_response.raise_for_status()
+            print(f'프리뷰 저장 결과: {preview_response.json()}')
+    except Exception as exc:
+        print(f'프리뷰 저장 실패 (경기 수집은 완료): {type(exc).__name__}')
