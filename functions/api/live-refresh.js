@@ -4,6 +4,7 @@
 // 이 엔드포인트는 Cloudflare Worker 크론(workers/live-cron)이 1분마다 호출한다.
 import { normalizePreview, PREVIEW_UPSERT, previewValues } from './preview-ingest.js';
 import { dispatchEvents } from './push/dispatch.js';
+import { normalizeBoxscore } from './boxscore.js';
 
 const NAVER_GAMES = 'https://api-gw.sports.naver.com/schedule/games';
 const NAVER_HEADERS = { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' };
@@ -23,7 +24,7 @@ const FETCH_TIMEOUT_MS = 6000;
 const MAX_PREVIEW_FETCHES = 5;
 
 export const LIVE_FIELDS = ['status', 'status_note', 'away_score', 'home_score',
-  'away_line', 'home_line', 'away_rheb', 'home_rheb'];
+  'away_line', 'home_line', 'away_rheb', 'home_rheb', 'hitter_details', 'pitcher_details'];
 
 export function kstDate(now = Date.now()) {
   return new Date(now + KST_OFFSET_MS).toISOString().slice(0, 10);
@@ -38,9 +39,12 @@ export function naverGameId(gameId) {
 
 export function isLiveTarget(game, now) {
   const startsAt = Date.parse(game?.starts_at);
-  if (!Number.isFinite(startsAt) || CLOSED_STATUSES.has(game.status)) return false;
-  if (!naverGameId(game.id)) return false;
-  return now >= startsAt - LIVE_WINDOW_BEFORE_MS && now <= startsAt + LIVE_WINDOW_AFTER_MS;
+  if (!Number.isFinite(startsAt) || !naverGameId(game.id)) return false;
+  const inWindow = now >= startsAt - LIVE_WINDOW_BEFORE_MS && now <= startsAt + LIVE_WINDOW_AFTER_MS;
+  if (!inWindow) return false;
+  // 끝난 경기는 더 볼 것이 없다. 단 박스스코어가 아직 없으면 그것만 받으러 한 번 더 간다.
+  if (CLOSED_STATUSES.has(game.status)) return game.status === 'final' && !game.has_boxscore;
+  return true;
 }
 
 // 라인업이 확정될 때까지만 프리뷰를 다시 읽는다. 확정된 뒤에는 더 부르지 않는다.
@@ -127,6 +131,7 @@ export async function onRequestPost(context) {
   let games = [];
   try {
     const result = await db.prepare(`SELECT g.id, g.starts_at, g.status, g.away_team, g.home_team,
+        (g.hitter_details IS NOT NULL) AS has_boxscore,
         p.lineup_state, p.checked_at AS preview_checked_at
       FROM games g LEFT JOIN game_previews p ON p.game_id = g.id
       WHERE g.date = ?1 ORDER BY g.starts_at ASC`).bind(today).all();
@@ -148,10 +153,22 @@ export async function onRequestPost(context) {
   let previewed = 0;
 
   const events = [];
+  let recorded = 0;
   for (const game of liveTargets) {
-    const payload = await fetchJson(`${NAVER_GAMES}/${naverGameId(game.id)}/game-polling`);
-    const patch = normalizePolling(payload?.result?.game);
-    if (!patch) continue;
+    const sourceId = naverGameId(game.id);
+    const payload = await fetchJson(`${NAVER_GAMES}/${sourceId}/game-polling`);
+    const patch = normalizePolling(payload?.result?.game) || {};
+    // 타자·투수 기록도 같이 받는다. 없으면 기존 기록을 건드리지 않는다.
+    if (Object.keys(patch).length && patch.status !== 'scheduled') {
+      const record = await fetchJson(`${NAVER_GAMES}/${sourceId}/record`);
+      const boxscore = normalizeBoxscore(record?.result?.recordData);
+      if (boxscore) {
+        patch.hitter_details = JSON.stringify(boxscore.hitter_details);
+        patch.pitcher_details = JSON.stringify(boxscore.pitcher_details);
+        recorded += 1;
+      }
+    }
+    if (!Object.keys(patch).length) continue;
     polled += 1;
     // 이번 갱신에서 처음 종료로 넘어간 경기만 알린다.
     if (patch.status === 'final' && game.status !== 'final' && patch.away_score != null && patch.home_score != null) {
@@ -193,7 +210,7 @@ export async function onRequestPost(context) {
   if (!statements.length) {
     // 네이버가 응답하지 않아도 기존 데이터는 그대로 둔다.
     await log('success', 0).run().catch((error) => console.error('live_log_failed', String(error)));
-    return Response.json({ polled, previewed, written: 0, date: today });
+    return Response.json({ polled, previewed, recorded, written: 0, date: today });
   }
 
   try {
@@ -209,5 +226,5 @@ export async function onRequestPost(context) {
     await log('failed', 0, 'Live refresh write failed').run().catch(() => {});
     return Response.json({ error: '라이브 갱신 저장에 실패했습니다.' }, { status: 500 });
   }
-  return Response.json({ polled, previewed, written: statements.length, events: events.length, date: today });
+  return Response.json({ polled, previewed, recorded, written: statements.length, events: events.length, date: today });
 }

@@ -1184,7 +1184,8 @@ function statsGroupHtml(team, rows, type) {
 
 function friendlyPosition(position) {
   const value = String(position || "").trim();
-  const aliases = { P: "투수", C: "포수", "1B": "1루수", "2B": "2루수", "3B": "3루수", SS: "유격수", LF: "좌익수", CF: "중견수", RF: "우익수", DH: "지명타자", "一": "1루수", "二": "2루수", "三": "3루수", 유: "유격수", 좌: "좌익수", 중: "중견수", 우: "우익수", 포: "포수", 지: "지명타자" };
+  // 대(대타)·주(대주자)는 네이버 박스스코어에서만 온다. 없으면 포지션이 그대로 노출된다.
+  const aliases = { P: "투수", C: "포수", "1B": "1루수", "2B": "2루수", "3B": "3루수", SS: "유격수", LF: "좌익수", CF: "중견수", RF: "우익수", DH: "지명타자", "一": "1루수", "二": "2루수", "三": "3루수", 유: "유격수", 좌: "좌익수", 중: "중견수", 우: "우익수", 포: "포수", 지: "지명타자", 대: "대타", 주: "대주자", 투: "투수" };
   if (value.startsWith("타")) return aliases[value.slice(1)] || "타자";
   return aliases[value.toUpperCase()] || aliases[value] || value || "포지션 미정";
 }
