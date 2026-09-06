@@ -1,6 +1,6 @@
-const CACHE_NAME = "kbo-gameday-shell-v10";
+const CACHE_NAME = "kbo-gameday-shell-v11";
 const API_CACHE_NAME = "kbo-gameday-api-v1";
-const SHELL = ["/", "/index.html", "/app.js?v=20260906-routes", "/styles.css?v=20260906-routes", "/manifest.json"];
+const SHELL = ["/", "/index.html", "/app.js?v=20260906-ical", "/styles.css?v=20260906-ical", "/manifest.json"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL)));

@@ -614,3 +614,10 @@ button.lineup-notice:hover { border-color: var(--accent); }
 .cross-link-body strong { display: block; font-size: 16px; letter-spacing: -0.02em; }
 .cross-link-body small { display: block; margin-top: 3px; color: var(--ink-soft); font-size: 13px; }
 .cross-link-go { color: var(--accent); font-size: 14px; font-weight: 800; }
+
+/* ── 캘린더 구독 ─────────────────────────────────────────────────────────── */
+.calendar-lead { margin: 0; padding: 0 18px 14px; color: var(--ink-soft); font-size: 14px; line-height: 1.5; }
+.calendar-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 18px; }
+.calendar-hint { margin: 0; padding: 12px 18px 18px; color: var(--ink-faint); font-size: 12px; line-height: 1.5; }
+.calendar-hint strong { color: var(--ink-soft); }
+@media (max-width: 380px) { .calendar-actions { grid-template-columns: 1fr; } }
