@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+:root{--page:#f4f2eb;--surface-strong:#ffffff;--surface-muted:#eeece4;--ink:#142033;--ink-soft:#53627a;--ink-faint:#817e73;--line:#ded9cc;--line-strong:#c9c2b2;--accent:#2454d9;--shadow:0 14px 36px rgba(54,47,34,.08)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;line-height:1.45;word-break:keep-all;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none} a:hover{color:#1c44b3}
+</style>
+</helmet>
+<div style="min-height:100%;background:var(--page);padding:20px 16px">
+  <div style="margin-bottom:14px;color:var(--ink-faint);font-size:11px;font-weight:800;letter-spacing:.06em">교차 유입 카드 · 오늘 경기가 모두 끝난 뒤에만</div>
+
+  <div style="border:1px solid var(--line);border-radius:16px;background:var(--surface-strong);box-shadow:var(--shadow);padding:20px">
+    <p style="margin:0 0 16px;color:var(--ink-soft);font-size:14px;font-weight:750">오늘 경기가 모두 끝났습니다</p>
+    <div style="display:flex;align-items:center;gap:13px">
+      <span style="display:inline-flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:13px;background:var(--surface-muted);flex:0 0 auto">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#53627a" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="7.5" width="19" height="10" rx="4"></rect><path d="M7 11v3M5.5 12.5h3M15.5 11.5h.01M18 13.8h.01"></path></svg>
+      </span>
+      <span style="min-width:0">
+        <strong style="display:block;font-size:16px;letter-spacing:-0.02em">야구 Who Are Ya</strong>
+        <span style="display:block;margin-top:2px;color:var(--ink-soft);font-size:13px">오늘 1군 등록 선수 중 한 명 맞히기</span>
+      </span>
+    </div>
+    <span style="margin-top:16px;min-height:48px;width:100%;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;padding:0 18px;font-weight:800;border:2px solid var(--accent);background:transparent;color:var(--accent)">하러 가기</span>
+  </div>
+
+  <p style="margin:16px 4px 0;color:var(--ink-faint);font-size:12px;line-height:1.6">
+    경기 전·중에는 띄우지 않는다. 게임 링크가 예매와 라인업 앞을 가로막으면 앱의 목적이 흐려진다.
+  </p>
+</div>
+</x-dc>
+</body>
+</html>

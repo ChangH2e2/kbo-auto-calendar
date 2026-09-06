@@ -1,0 +1,109 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+:root{--page:#f4f2eb;--surface-strong:#ffffff;--surface-muted:#eeece4;--ink:#142033;--ink-soft:#53627a;--ink-faint:#817e73;--line:#ded9cc;--line-strong:#c9c2b2;--accent:#2454d9;--accent-soft:#e7edff;--amber:#a44b0c;--danger:#973c42}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;line-height:1.45;word-break:keep-all;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none} a:hover{color:#1c44b3}
+.panel{border:1px solid var(--line);border-radius:16px;background:#ffffff;box-shadow:0 14px 36px rgba(54,47,34,.08);padding:20px 22px}
+.src{display:flex;align-items:center;gap:9px;padding:9px 0;border-top:1px solid var(--line);font-size:13px;color:var(--ink-soft)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--line-strong);flex:0 0 auto}
+</style>
+</helmet>
+
+<div style="min-height:100%;background:var(--page);padding:38px 40px 34px">
+
+  <p style="margin:0 0 6px;color:var(--ink-faint);font-size:12px;font-weight:800;letter-spacing:.08em">P4 설계</p>
+  <h1 style="margin:0 0 8px;font-size:32px;font-weight:850;letter-spacing:-0.045em">연계의 본질은 배너 교환이 아니라 데이터 교환이다</h1>
+  <p style="margin:0 0 30px;max-width:820px;color:var(--ink-soft);font-size:15px;line-height:1.6">
+    두 사이트는 서로의 약점을 정확히 메운다. GameDay에는 선수 마스터가 없고, Who Are Ya에는 매일 갱신되는 등록 명단이 없다.
+    시스템을 결합하지 않고 <strong style="color:var(--ink)">공개 JSON 한 개와 읽기 프록시 한 개</strong>로 느슨하게 잇는다.
+  </p>
+
+  <div style="display:grid;grid-template-columns:minmax(0,1fr) 236px minmax(0,1fr);gap:0;align-items:stretch">
+
+    <!-- GameDay -->
+    <div class="panel">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+        <span style="width:12px;height:12px;border-radius:50%;background:var(--accent)"></span>
+        <strong style="font-size:19px;letter-spacing:-0.03em">KBO GameDay</strong>
+      </div>
+      <p style="margin:0 0 14px;color:var(--ink-faint);font-size:12px">Cloudflare Pages + D1 · 매일 수집</p>
+      <div class="src"><span class="dot"></span>KBO 일정 · 박스스코어</div>
+      <div class="src"><span class="dot" style="background:var(--accent)"></span>네이버 프리뷰 — 선발 · 라인업 · 불펜</div>
+      <div class="src"><span class="dot" style="background:var(--accent)"></span>KBO 1군 등록 / 등말소 <strong style="color:var(--ink)">매일 06:00</strong></div>
+      <div class="src" style="border-bottom:1px solid var(--line)"><span class="dot"></span>예매 정책 · 경기별 예매 상태</div>
+      <p style="margin:14px 0 0;padding:11px 13px;border-radius:11px;background:var(--surface-muted);color:var(--ink-soft);font-size:12px;line-height:1.55">
+        <strong style="color:var(--ink)">없는 것</strong> — 선수 엔티티. 네이버 불펜·대기타자 명단에는 <strong style="color:var(--ink)">등번호조차 없다</strong>(이름·투타뿐).
+      </p>
+    </div>
+
+    <!-- arrows -->
+    <div style="display:grid;align-content:center;gap:26px;padding:0 18px">
+      <div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:7px">
+          <div style="flex:1;height:2px;background:var(--accent)"></div>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2454d9" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5.5 15.5 12 9 18.5"></path></svg>
+        </div>
+        <div style="padding:11px 13px;border:1px solid rgba(36,84,217,.35);border-radius:11px;background:var(--accent-soft)">
+          <strong style="display:block;font-size:13px;color:var(--accent)">매일의 1군 등록 명단</strong>
+          <span style="display:block;margin-top:3px;color:var(--ink-soft);font-size:11.5px;line-height:1.5">정답 풀 신선도 주 1회 → 매일<br>퇴단 외국인도 더 빨리 걸린다</span>
+          <code style="display:block;margin-top:7px;color:var(--ink-faint);font-size:11px">/api/roster/registered.json</code>
+        </div>
+      </div>
+
+      <div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:7px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a44b0c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5.5 8.5 12 15 18.5"></path></svg>
+          <div style="flex:1;height:2px;background:var(--amber)"></div>
+        </div>
+        <div style="padding:11px 13px;border:1px solid rgba(164,75,12,.35);border-radius:11px;background:#fff2e3">
+          <strong style="display:block;font-size:13px;color:var(--amber)">선수 마스터</strong>
+          <span style="display:block;margin-top:3px;color:var(--ink-soft);font-size:11.5px;line-height:1.5">년생 · 키 · 세부 포지션 · 등번호<br>KBO 약 1,100명 + 레전드 527명</span>
+          <code style="display:block;margin-top:7px;color:var(--ink-faint);font-size:11px">Pages Function 프록시</code>
+        </div>
+      </div>
+    </div>
+
+    <!-- whoareya -->
+    <div class="panel">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+        <span style="width:12px;height:12px;border-radius:50%;background:var(--amber)"></span>
+        <strong style="font-size:19px;letter-spacing:-0.03em">야구 Who Are Ya</strong>
+      </div>
+      <p style="margin:0 0 14px;color:var(--ink-faint);font-size:12px">games.salarycrew.com · Vercel + Supabase</p>
+      <div class="src"><span class="dot" style="background:var(--amber)"></span>KBO 선수 조회 · 프로필 · 수비 이닝</div>
+      <div class="src"><span class="dot"></span>퓨처스 박스스코어 세부 포지션</div>
+      <div class="src"><span class="dot"></span>MLB · NPB · K리그 · EPL 외 4개 리그</div>
+      <div class="src" style="border-bottom:1px solid var(--line)"><span class="dot"></span>레전드 527명 (1982~ 기록 기반)</div>
+      <p style="margin:14px 0 0;padding:11px 13px;border-radius:11px;background:var(--surface-muted);color:var(--ink-soft);font-size:12px;line-height:1.55">
+        <strong style="color:var(--ink)">약한 것</strong> — 수집이 <strong style="color:var(--ink)">주 1회</strong>라 등말소 반영이 늦다. 정답 풀에 방출 선수가 남는다.
+      </p>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:26px">
+    <div style="padding:16px 18px;border:1px solid rgba(151,60,66,.3);border-radius:14px;background:#fae9e9">
+      <strong style="display:block;margin-bottom:6px;font-size:14px;color:var(--danger)">공통 식별자를 만들지 않는다</strong>
+      <span style="color:var(--ink-soft);font-size:13px;line-height:1.55">두 사이트 모두 로그인이 없다. Who Are Ya의 기기 ID를 GameDay가 읽으면 개인정보 처리 범위가 커진다.</span>
+    </div>
+    <div style="padding:16px 18px;border:1px solid var(--line);border-radius:14px;background:#ffffff">
+      <strong style="display:block;margin-bottom:6px;font-size:14px">매칭 키는 (팀, 이름, 등번호)</strong>
+      <span style="color:var(--ink-soft);font-size:13px;line-height:1.55">동명이인은 등번호로 갈린다. 매칭 실패는 조용히 넘기고 이름만 렌더한다.</span>
+    </div>
+    <div style="padding:16px 18px;border:1px solid var(--line);border-radius:14px;background:#ffffff">
+      <strong style="display:block;margin-bottom:6px;font-size:14px">런타임 + 동봉 폴백</strong>
+      <span style="color:var(--ink-soft);font-size:13px;line-height:1.55">Who Are Ya가 이미 쓰는 패턴이라 검증돼 있다. Supabase가 죽어도 화면은 이름으로 동작한다.</span>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

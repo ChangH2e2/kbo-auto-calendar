@@ -1,0 +1,144 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+:root{--page:#f4f2eb;--surface-strong:#ffffff;--surface-muted:#eeece4;--ink:#142033;--ink-soft:#53627a;--ink-faint:#817e73;--line:#ded9cc;--line-strong:#c9c2b2;--accent:#2454d9;--accent-soft:#e7edff;--live:#c51f2f;--amber:#a44b0c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;line-height:1.45;word-break:keep-all;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none} a:hover{color:#1c44b3}
+.tab-num{font-variant-numeric:tabular-nums}
+.lane{display:grid;grid-template-columns:186px repeat(7,minmax(0,1fr));align-items:center;height:52px;border-bottom:1px solid var(--line)}
+.lane:last-child{border-bottom:0}
+.lname{padding-right:16px;font-size:14px;font-weight:800;letter-spacing:-0.02em}
+.lsub{display:block;margin-top:1px;color:var(--ink-faint);font-size:11px;font-weight:600;letter-spacing:0}
+.bar{height:26px;border-radius:7px;display:flex;align-items:center;padding:0 11px;font-size:12px;font-weight:750;white-space:nowrap;overflow:hidden}
+.col{position:relative;height:100%;display:flex;align-items:center;border-left:1px solid var(--line)}
+</style>
+</helmet>
+
+<div style="min-height:100%;background:var(--page);padding:38px 40px 34px">
+
+  <p style="margin:0 0 6px;color:var(--ink-faint);font-size:12px;font-weight:800;letter-spacing:.08em">P1 · P2 설계 원칙</p>
+  <h1 style="margin:0 0 8px;font-size:32px;font-weight:850;letter-spacing:-0.045em">오늘 화면은 슬롯이 아니라 타임라인이다</h1>
+  <p style="margin:0 0 30px;max-width:760px;color:var(--ink-soft);font-size:15px;line-height:1.6">
+    다음 경기 카드는 경기가 가까워질수록 블록이 하나씩 늘어난다. 각 블록은 데이터가 있을 때만 렌더하고,
+    없을 때 자리를 비워 두지 않는다 — 그래서 D-7의 카드도 T-1시간의 카드도 각각 완결돼 보인다.
+  </p>
+
+  <div style="border:1px solid var(--line);border-radius:16px;background:#ffffff;overflow:hidden;box-shadow:0 14px 36px rgba(54,47,34,.08)">
+
+    <div class="lane" style="height:44px;background:var(--surface-muted);border-bottom:1px solid var(--line-strong)">
+      <span class="lname" style="padding-left:20px;color:var(--ink-faint);font-size:11px;font-weight:800;letter-spacing:.04em">카드 블록</span>
+      <span class="col tab-num" style="justify-content:center;color:var(--ink-faint);font-size:12px;font-weight:750">D-7</span>
+      <span class="col tab-num" style="justify-content:center;color:var(--ink-faint);font-size:12px;font-weight:750">D-2</span>
+      <span class="col tab-num" style="justify-content:center;color:var(--ink-faint);font-size:12px;font-weight:750">D-1</span>
+      <span class="col tab-num" style="justify-content:center;color:var(--ink-faint);font-size:12px;font-weight:750">당일 오전</span>
+      <span class="col tab-num" style="justify-content:center;color:var(--ink-faint);font-size:12px;font-weight:750">T-2h</span>
+      <span class="col tab-num" style="justify-content:center;color:var(--ink-faint);font-size:12px;font-weight:750">경기 중</span>
+      <span class="col tab-num" style="justify-content:center;color:var(--ink-faint);font-size:12px;font-weight:750">종료</span>
+    </div>
+
+    <div style="padding:0 20px">
+      <div class="lane">
+        <span class="lname">팀 · 시각 · 구장<span class="lsub">games</span></span>
+        <span class="col" style="border-left:0"><span class="bar" style="flex:1;background:var(--surface-muted);color:var(--ink-soft);border-radius:7px 0 0 7px">항상</span></span>
+        <span class="col"><span class="bar" style="flex:1;background:var(--surface-muted);border-radius:0"></span></span>
+        <span class="col"><span class="bar" style="flex:1;background:var(--surface-muted);border-radius:0"></span></span>
+        <span class="col"><span class="bar" style="flex:1;background:var(--surface-muted);border-radius:0"></span></span>
+        <span class="col"><span class="bar" style="flex:1;background:var(--surface-muted);border-radius:0"></span></span>
+        <span class="col"><span class="bar" style="flex:1;background:var(--surface-muted);border-radius:0"></span></span>
+        <span class="col"><span class="bar" style="flex:1;background:var(--surface-muted);border-radius:0 7px 7px 0"></span></span>
+      </div>
+
+      <div class="lane">
+        <span class="lname">예매 상태<span class="lsub">game_ticket_info · 기존</span></span>
+        <span class="col" style="border-left:0"><span class="bar" style="flex:1;background:#fff2e3;color:var(--amber);border:1px solid rgba(164,75,12,.35);border-right:0;border-radius:7px 0 0 7px">오픈 예정</span></span>
+        <span class="col"><span class="bar" style="flex:1;background:#fff2e3;border-top:1px solid rgba(164,75,12,.35);border-bottom:1px solid rgba(164,75,12,.35);border-radius:0"></span></span>
+        <span class="col"><span class="bar" style="flex:1;background:var(--accent-soft);color:var(--accent);border-top:1px solid rgba(36,84,217,.35);border-bottom:1px solid rgba(36,84,217,.35);border-radius:0;font-weight:800">예매 중</span></span>
+        <span class="col"><span class="bar" style="flex:1;background:var(--accent-soft);border-top:1px solid rgba(36,84,217,.35);border-bottom:1px solid rgba(36,84,217,.35);border-radius:0"></span></span>
+        <span class="col"><span class="bar" style="flex:1;background:var(--accent-soft);border:1px solid rgba(36,84,217,.35);border-left:0;border-radius:0 7px 7px 0"></span></span>
+        <span class="col"></span>
+        <span class="col"></span>
+      </div>
+
+      <div class="lane">
+        <span class="lname">순위 · 상대전적<span class="lsub">preview.standings · seasonVs</span></span>
+        <span class="col" style="border-left:0"></span>
+        <span class="col"><span class="bar" style="flex:1;background:#eaf0ff;color:var(--accent);border-radius:7px 0 0 7px">팀 성적 · 상대전적 바</span></span>
+        <span class="col"><span class="bar" style="flex:1;background:#eaf0ff;border-radius:0"></span></span>
+        <span class="col"><span class="bar" style="flex:1;background:#eaf0ff;border-radius:0"></span></span>
+        <span class="col"><span class="bar" style="flex:1;background:#eaf0ff;border-radius:0"></span></span>
+        <span class="col"><span class="bar" style="flex:1;background:#eaf0ff;border-radius:0"></span></span>
+        <span class="col"><span class="bar" style="flex:1;background:#eaf0ff;border-radius:0 7px 7px 0"></span></span>
+      </div>
+
+      <div class="lane">
+        <span class="lname">선발 매치업<span class="lsub">preview.awayStarter · homeStarter</span></span>
+        <span class="col" style="border-left:0"></span>
+        <span class="col"></span>
+        <span class="col"><span class="bar" style="flex:1;background:#dbe4ff;color:#1c3fa8;border-radius:7px 0 0 7px;font-weight:800">선발 예고되면 등장</span></span>
+        <span class="col"><span class="bar" style="flex:1;background:#dbe4ff;border-radius:0"></span></span>
+        <span class="col"><span class="bar" style="flex:1;background:#dbe4ff;border-radius:0"></span></span>
+        <span class="col"><span class="bar" style="flex:1;background:#dbe4ff;border-radius:0"></span></span>
+        <span class="col"><span class="bar" style="flex:1;background:#eeece4;color:var(--ink-faint);border-radius:0 7px 7px 0">접힘</span></span>
+      </div>
+
+      <div class="lane">
+        <span class="lname">라인업<span class="lsub">preview.fullLineUp · lineup_state</span></span>
+        <span class="col" style="border-left:0"></span>
+        <span class="col"></span>
+        <span class="col"></span>
+        <span class="col"><span class="bar" style="flex:1;border:1px dashed var(--line-strong);color:var(--ink-soft);border-radius:7px 0 0 7px">15:00 전후 공개 안내</span></span>
+        <span class="col"><span class="bar" style="flex:1;background:#c9d6ff;color:#17307f;border-radius:0;font-weight:800">발표 · 상세 탭 열림</span></span>
+        <span class="col"><span class="bar" style="flex:1;background:#c9d6ff;border-radius:0"></span></span>
+        <span class="col"><span class="bar" style="flex:1;background:#eeece4;color:var(--ink-faint);border-radius:0 7px 7px 0">실제 출장으로 전환</span></span>
+      </div>
+
+      <div class="lane">
+        <span class="lname">라이브 스코어<span class="lsub">기존 naver polling</span></span>
+        <span class="col" style="border-left:0"></span>
+        <span class="col"></span>
+        <span class="col"></span>
+        <span class="col"></span>
+        <span class="col"></span>
+        <span class="col"><span class="bar" style="flex:1;background:#fbe8ea;color:var(--live);border-radius:7px;font-weight:800">LIVE</span></span>
+        <span class="col"></span>
+      </div>
+
+      <div class="lane">
+        <span class="lname">최종 기록<span class="lsub">기존 boxscore</span></span>
+        <span class="col" style="border-left:0"></span>
+        <span class="col"></span>
+        <span class="col"></span>
+        <span class="col"></span>
+        <span class="col"></span>
+        <span class="col"></span>
+        <span class="col"><span class="bar" style="flex:1;background:var(--surface-muted);color:var(--ink-soft);border-radius:7px">스코어보드 · 타자 · 투수</span></span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:24px">
+    <div style="padding:16px 18px;border:1px solid var(--line);border-radius:14px;background:#ffffff">
+      <strong style="display:block;margin-bottom:6px;font-size:14px">빈 슬롯을 만들지 않는다</strong>
+      <span style="color:var(--ink-soft);font-size:13px;line-height:1.55">프리뷰가 없으면 블록 자체를 렌더하지 않는다. "정보 없음" 자리는 카드를 미완성으로 보이게 한다.</span>
+    </div>
+    <div style="padding:16px 18px;border:1px solid var(--line);border-radius:14px;background:#ffffff">
+      <strong style="display:block;margin-bottom:6px;font-size:14px">상태는 서버가 정한다</strong>
+      <span style="color:var(--ink-soft);font-size:13px;line-height:1.55">프런트가 배열 길이를 세어 판단하지 않는다. <code style="font-size:12px">lineup_state</code>를 수집기가 계산해 저장한다.</span>
+    </div>
+    <div style="padding:16px 18px;border:1px solid var(--line);border-radius:14px;background:#ffffff">
+      <strong style="display:block;margin-bottom:6px;font-size:14px">한 번 채워지면 지우지 않는다</strong>
+      <span style="color:var(--ink-soft);font-size:13px;line-height:1.55">소스가 경기 후 프리뷰를 정리해도 <code style="font-size:12px">announced</code> 행은 덮어쓰지 않는다.</span>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

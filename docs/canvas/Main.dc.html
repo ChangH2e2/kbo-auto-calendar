@@ -1,0 +1,198 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+:root{
+  --page:#f4f2eb; --surface:#fbfaf6; --surface-strong:#ffffff; --surface-muted:#eeece4;
+  --ink:#142033; --ink-soft:#53627a; --ink-faint:#817e73;
+  --line:#ded9cc; --line-strong:#c9c2b2;
+  --accent:#2454d9; --accent-soft:#e7edff;
+  --live:#c51f2f; --amber:#a44b0c; --amber-soft:#fff2e3;
+  --shadow:0 14px 36px rgba(54,47,34,.08);
+  --hh:#f36f21; --lt:#0b2f58;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);
+  font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-size:15px;line-height:1.45;word-break:keep-all;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none}
+a:hover{color:#1c44b3}
+.tab-num{font-variant-numeric:tabular-nums}
+</style>
+</helmet>
+
+<div style="min-height:100%;background:var(--page);padding-bottom:76px;position:relative">
+
+  <!-- header -->
+  <div style="height:68px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);background:#fbfaf6">
+    <span style="font-size:20px;font-weight:850;letter-spacing:-0.04em">KBO GameDay</span>
+    <span style="min-height:36px;border:1px solid var(--line-strong);border-radius:999px;background:var(--surface-strong);display:inline-flex;align-items:center;gap:9px;padding:0 13px">
+      <span style="width:12px;height:12px;border-radius:50%;background:var(--hh)"></span>
+      <strong style="font-size:14px">한화</strong>
+      <span style="color:var(--ink-faint);font-size:12px">⌄</span>
+    </span>
+  </div>
+
+  <!-- refresh row -->
+  <div style="display:flex;align-items:center;gap:10px;padding:11px 16px 0;color:var(--ink-faint);font-size:12px">
+    <span style="color:var(--ink-soft);font-weight:750">온라인</span>
+    <span>2분 전 갱신</span>
+  </div>
+
+  <!-- hero -->
+  <div style="margin:14px 16px 0;overflow:hidden;border:1px solid var(--line);border-radius:16px;background:var(--surface-strong);box-shadow:var(--shadow)">
+
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:18px 20px 0;color:var(--ink-soft);font-weight:750;font-size:14px">
+      <span>다음 경기</span>
+      <span>오늘 · 일</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);align-items:center;padding:20px 20px 14px">
+      <div style="min-width:0">
+        <span style="display:block;margin-bottom:8px;color:var(--ink-soft);font-size:12px;font-weight:750">원정</span>
+        <span style="display:flex;align-items:center;gap:9px;font-size:30px;font-weight:850;letter-spacing:-0.04em">
+          <span style="width:30px;height:30px;border-radius:50%;background:var(--hh);box-shadow:inset 0 0 0 2px rgba(255,255,255,.2);flex:0 0 auto"></span>한화</span>
+        <span class="tab-num" style="display:block;margin-top:7px;color:var(--ink-soft);font-size:12px">51승 65패 3무</span>
+      </div>
+      <div style="color:var(--ink-faint);font-size:15px;font-weight:800;text-align:center">vs</div>
+      <div style="min-width:0;text-align:right;border-right:4px solid var(--lt);padding-right:14px">
+        <span style="display:block;margin-bottom:8px;color:var(--ink-soft);font-size:12px;font-weight:750">홈</span>
+        <span style="display:flex;align-items:center;justify-content:flex-end;gap:9px;font-size:30px;font-weight:850;letter-spacing:-0.04em">
+          <span style="width:30px;height:30px;border-radius:50%;background:var(--lt);box-shadow:inset 0 0 0 2px rgba(255,255,255,.2);flex:0 0 auto"></span>롯데</span>
+        <span class="tab-num" style="display:block;margin-top:7px;color:var(--ink-soft);font-size:12px">51승 65패 2무</span>
+      </div>
+    </div>
+
+    <div style="padding:0 20px 16px;color:var(--ink-soft);font-size:14px">
+      <strong class="tab-num" style="color:var(--ink)">17:00</strong> · 사직
+    </div>
+
+    <!-- NEW: 선발 매치업 -->
+    <div style="margin:0 14px;padding:14px 16px 16px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="margin-bottom:13px;color:var(--ink-faint);font-size:11px;font-weight:800;letter-spacing:.04em">선발 매치업</div>
+
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) 74px minmax(0,1fr);align-items:end;gap:8px;margin-bottom:12px">
+        <div style="min-width:0">
+          <div style="display:flex;align-items:baseline;gap:6px">
+            <span class="tab-num" style="color:var(--ink-faint);font-size:12px;font-weight:800">24</span>
+            <strong style="font-size:19px;letter-spacing:-0.03em">화이트</strong>
+          </div>
+          <span style="display:block;margin-top:2px;color:var(--ink-soft);font-size:12px">우완 · 190cm</span>
+        </div>
+        <div></div>
+        <div style="min-width:0;text-align:right">
+          <div style="display:flex;align-items:baseline;justify-content:flex-end;gap:6px">
+            <strong style="font-size:19px;letter-spacing:-0.03em">로드리게스</strong>
+            <span class="tab-num" style="color:var(--ink-faint);font-size:12px;font-weight:800">31</span>
+          </div>
+          <span style="display:block;margin-top:2px;color:var(--ink-soft);font-size:12px">우완 · 193cm</span>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) 74px minmax(0,1fr);row-gap:9px;align-items:center">
+        <span class="tab-num" style="font-size:16px;font-weight:800">3.41</span>
+        <span style="text-align:center;color:var(--ink-faint);font-size:11px;font-weight:750">시즌 ERA</span>
+        <span class="tab-num" style="text-align:right;font-size:16px;font-weight:800">4.17</span>
+
+        <span class="tab-num" style="font-size:14px;color:var(--ink-soft);font-weight:750">6승 9패</span>
+        <span style="text-align:center;color:var(--ink-faint);font-size:11px;font-weight:750">승패</span>
+        <span class="tab-num" style="text-align:right;font-size:14px;color:var(--ink-soft);font-weight:750">7승 10패</span>
+
+        <span class="tab-num" style="font-size:16px;font-weight:800">7.71</span>
+        <span style="text-align:center;color:var(--ink-faint);font-size:11px;font-weight:750">상대 ERA</span>
+        <span class="tab-num" style="text-align:right;font-size:16px;font-weight:800">6.35</span>
+
+        <span class="tab-num" style="font-size:14px;color:var(--ink-soft);font-weight:750">직구 148km</span>
+        <span style="text-align:center;color:var(--ink-faint);font-size:11px;font-weight:750">주무기</span>
+        <span class="tab-num" style="text-align:right;font-size:14px;color:var(--ink-soft);font-weight:750">직구 151km</span>
+      </div>
+    </div>
+
+    <!-- NEW: 시즌 상대전적 -->
+    <div style="padding:14px 20px 16px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px">
+        <span style="color:var(--ink-faint);font-size:11px;font-weight:800;letter-spacing:.04em">시즌 상대전적</span>
+        <span class="tab-num" style="color:var(--ink-soft);font-size:13px;font-weight:750">한화 9승 · 롯데 3승</span>
+      </div>
+      <div style="display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--surface-muted)">
+        <span style="flex:9;background:var(--hh)"></span>
+        <span style="flex:3;background:var(--lt)"></span>
+      </div>
+    </div>
+
+    <!-- NEW: 라인업 대기 -->
+    <div style="margin:0 14px 14px;padding:13px 15px;border:1px dashed var(--line-strong);border-radius:12px;display:flex;align-items:center;gap:11px;color:var(--ink-soft)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#817e73" stroke-width="1.8" stroke-linecap="round" style="flex:0 0 auto">
+        <circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3.2 1.9"></path>
+      </svg>
+      <span style="font-size:13px;line-height:1.35">라인업은 <strong class="tab-num" style="color:var(--ink)">15:00</strong> 전후 공개됩니다</span>
+    </div>
+
+    <!-- 기존 예매 패널 (ticket_open) -->
+    <div style="margin:0 14px 14px;padding:16px;border-radius:14px;border:1px solid rgba(36,84,217,.4);border-left:5px solid var(--accent);background:#eef2ff;color:var(--accent)">
+      <div style="margin-bottom:9px;color:var(--ink-soft);font-size:11px;font-weight:800;letter-spacing:.02em">홈 경기 예매</div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+        <strong style="font-size:17px;letter-spacing:-0.02em">예매 중</strong>
+        <span class="tab-num" style="color:var(--ink-soft);font-size:13px;font-weight:750">경기 시작까지 4시간</span>
+      </div>
+      <p style="margin:5px 0 14px;font-size:13px;font-weight:700">롯데 자이언츠 · 티켓링크</p>
+      <span style="min-height:48px;width:100%;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;padding:0 18px;font-weight:800;border:1px solid var(--accent);background:var(--accent);color:#f9fbff">예매하기</span>
+    </div>
+  </div>
+
+  <!-- 오늘의 경기 -->
+  <div style="padding:22px 16px 0">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:14px">
+      <h1 style="margin:0;font-size:25px;letter-spacing:-0.045em">오늘의 경기</h1>
+      <span style="color:var(--accent);font-weight:800;font-size:14px;white-space:nowrap">주간 일정 →</span>
+    </div>
+    <div style="overflow:hidden;border:1px solid var(--line);border-radius:16px;background:var(--surface-strong);box-shadow:var(--shadow)">
+      <div style="min-height:76px;border-bottom:1px solid var(--line);display:grid;grid-template-columns:62px minmax(0,1fr) auto;align-items:center;gap:12px;padding:13px 15px">
+        <span class="tab-num" style="color:var(--ink-soft);font-weight:750">14:00</span>
+        <span style="display:grid;gap:3px;min-width:0">
+          <span style="display:flex;align-items:center;gap:8px;font-size:16px"><span style="width:10px;height:10px;border-radius:50%;background:#315991"></span><strong>NC</strong></span>
+          <span style="display:flex;align-items:center;gap:8px;font-size:16px"><span style="width:10px;height:10px;border-radius:50%;background:#760019"></span><strong>키움</strong><span style="color:var(--ink-soft);font-size:11px;font-weight:750">홈</span></span>
+        </span>
+        <span style="justify-self:end;text-align:right;font-size:13px;font-weight:800;color:var(--ink-soft)">예정</span>
+      </div>
+      <div style="min-height:76px;display:grid;grid-template-columns:62px minmax(0,1fr) auto;align-items:center;gap:12px;padding:13px 15px;position:relative;background:rgba(231,237,255,.36)">
+        <span style="content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--hh)"></span>
+        <span class="tab-num" style="color:var(--ink-soft);font-weight:750">17:00</span>
+        <span style="display:grid;gap:3px;min-width:0">
+          <span style="display:flex;align-items:center;gap:8px;font-size:16px"><span style="width:10px;height:10px;border-radius:50%;background:var(--hh)"></span><strong>한화</strong></span>
+          <span style="display:flex;align-items:center;gap:8px;font-size:16px"><span style="width:10px;height:10px;border-radius:50%;background:var(--lt)"></span><strong>롯데</strong><span style="color:var(--ink-soft);font-size:11px;font-weight:750">홈</span></span>
+        </span>
+        <span style="justify-self:end;text-align:right;font-size:13px;font-weight:800;color:var(--ink-soft)">예정</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- bottom nav -->
+  <div style="position:absolute;bottom:0;left:0;right:0;min-height:68px;padding:7px 8px;border-top:1px solid var(--line);background:var(--surface-strong);display:grid;grid-template-columns:repeat(4,1fr)">
+    <span style="display:grid;justify-items:center;align-content:center;gap:3px;color:var(--accent)">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5.5 9.5V20h13V9.5"></path></svg>
+      <strong style="font-size:12px">오늘</strong>
+    </span>
+    <span style="display:grid;justify-items:center;align-content:center;gap:3px;color:var(--ink-faint)">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="3.5" y="4.5" width="17" height="16" rx="2.5"></rect><path d="M3.5 9.5h17M8.5 3v3M15.5 3v3"></path></svg>
+      <strong style="font-size:12px">일정</strong>
+    </span>
+    <span style="display:grid;justify-items:center;align-content:center;gap:3px;color:var(--ink-faint)">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8.5" r="3.2"></circle><path d="M3.5 20c0-3.3 2.5-5.5 5.5-5.5s5.5 2.2 5.5 5.5"></path><path d="M16 6.2a3 3 0 0 1 0 5.6M17.5 20c0-2.6-1-4.4-2.6-5.2"></path></svg>
+      <strong style="font-size:12px">내 팀</strong>
+    </span>
+    <span style="display:grid;justify-items:center;align-content:center;gap:3px;color:var(--ink-faint)">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"></circle><path d="M12 3v2.4M12 18.6V21M3 12h2.4M18.6 12H21M5.6 5.6l1.7 1.7M16.7 16.7l1.7 1.7M18.4 5.6l-1.7 1.7M7.3 16.7l-1.7 1.7"></path></svg>
+      <strong style="font-size:12px">설정</strong>
+    </span>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

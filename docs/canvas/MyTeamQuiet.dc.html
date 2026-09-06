@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+:root{--page:#f4f2eb;--surface-strong:#ffffff;--surface-muted:#eeece4;--ink:#142033;--ink-soft:#53627a;--ink-faint:#817e73;--line:#ded9cc;--accent:#2454d9;--shadow:0 14px 36px rgba(54,47,34,.08)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;line-height:1.45;word-break:keep-all;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none} a:hover{color:#1c44b3}
+.tab-num{font-variant-numeric:tabular-nums}
+</style>
+</helmet>
+<div style="min-height:100%;background:var(--page);padding:20px 16px">
+  <div style="margin-bottom:14px;color:var(--ink-faint);font-size:11px;font-weight:800;letter-spacing:.06em">내 팀 · 변동 없는 날 (대부분의 날)</div>
+
+  <div style="border:1px solid var(--line);border-radius:16px;background:var(--surface-strong);box-shadow:var(--shadow);overflow:hidden">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;padding:16px 18px 10px">
+      <h2 style="margin:0;font-size:18px;letter-spacing:-0.03em">오늘의 변동</h2>
+      <span class="tab-num" style="color:var(--ink-soft);font-size:13px;font-weight:750">9월 6일</span>
+    </div>
+    <div style="padding:6px 18px 20px">
+      <p style="margin:0 0 6px;font-size:16px;font-weight:800;color:var(--ink-soft)">변동 없음</p>
+      <p class="tab-num" style="margin:0;color:var(--ink-faint);font-size:13px">마지막 변동 9월 5일 · 2건</p>
+    </div>
+  </div>
+
+  <p style="margin:18px 4px 0;color:var(--ink-faint);font-size:12px;line-height:1.6">
+    등말소는 어떤 날은 0건이다. 빈 카드나 스켈레톤 대신 <strong style="color:var(--ink-soft)">마지막 변동이 언제였는지</strong>를 알려 준다 —
+    수집이 멈춘 것과 변동이 없는 것을 사용자가 구분할 수 있어야 한다.
+  </p>
+</div>
+</x-dc>
+</body>
+</html>

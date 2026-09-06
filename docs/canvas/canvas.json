@@ -1,0 +1,151 @@
+{
+  "pages": [
+    {
+      "id": "page-1",
+      "name": "화면 시안"
+    },
+    {
+      "id": "page-2",
+      "name": "설계"
+    }
+  ],
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "title": "P1 오늘 — 선발 매치업",
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 1180,
+      "page": "page-1"
+    },
+    {
+      "file": "Lineup.dc.html",
+      "title": "P2 라인업 탭 — 발표",
+      "x": 490,
+      "y": 0,
+      "w": 390,
+      "h": 1100,
+      "page": "page-1"
+    },
+    {
+      "file": "MyTeam.dc.html",
+      "title": "P3 내 팀 — 등록·등말소",
+      "x": 980,
+      "y": 0,
+      "w": 390,
+      "h": 1100,
+      "page": "page-1"
+    },
+    {
+      "file": "LineupPending.dc.html",
+      "title": "P2 라인업 탭 — 미발표",
+      "x": 1470,
+      "y": 0,
+      "w": 390,
+      "h": 480,
+      "page": "page-1"
+    },
+    {
+      "file": "PlayerSheet.dc.html",
+      "title": "P4 선수 프로필 시트",
+      "x": 0,
+      "y": 1310,
+      "w": 390,
+      "h": 620,
+      "page": "page-1"
+    },
+    {
+      "file": "CrossLink.dc.html",
+      "title": "P4 교차 유입 카드",
+      "x": 490,
+      "y": 1310,
+      "w": 390,
+      "h": 380,
+      "page": "page-1"
+    },
+    {
+      "file": "MyTeamQuiet.dc.html",
+      "title": "P3 변동 없는 날",
+      "x": 980,
+      "y": 1310,
+      "w": 390,
+      "h": 320,
+      "page": "page-1"
+    },
+    {
+      "file": "Desktop.dc.html",
+      "title": "데스크톱 일정 + 프리뷰 패널",
+      "x": 0,
+      "y": 2060,
+      "w": 1440,
+      "h": 900,
+      "page": "page-1"
+    },
+    {
+      "file": "StateTimeline.dc.html",
+      "title": "카드 블록 타임라인",
+      "x": 0,
+      "y": 0,
+      "w": 1240,
+      "h": 860,
+      "page": "page-2"
+    },
+    {
+      "file": "DataFlow.dc.html",
+      "title": "Who Are Ya 데이터 교환",
+      "x": 1360,
+      "y": 0,
+      "w": 1180,
+      "h": 800,
+      "page": "page-2"
+    },
+    {
+      "file": "Roadmap.dc.html",
+      "title": "P0~P6 진행 순서",
+      "x": 0,
+      "y": 990,
+      "w": 1420,
+      "h": 980,
+      "page": "page-2"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "screens-brief",
+      "x": 0,
+      "y": -180,
+      "w": 820,
+      "page": "page-1",
+      "text": "P1~P4 화면 시안.\nstyles.css의 토큰을 그대로 씀 — 아이보리 #f4f2eb, 코발트 #2454d9, 카드 16px / 컨트롤 12px, tabular 숫자.\n데이터는 2026-09-06 네이버 preview를 실제로 호출해 받은 값이다."
+    },
+    {
+      "id": "bullpen-gap",
+      "x": 1950,
+      "y": 0,
+      "w": 340,
+      "page": "page-1",
+      "text": "불펜·대기 타자에는 등번호가 없다 — 이름·투타·포지션뿐.\n그래서 등번호는 타순 표에서만 쓰고, 나머지는 P4 선수 마스터가 채운다."
+    },
+    {
+      "id": "standings-caveat",
+      "x": 1950,
+      "y": 300,
+      "w": 340,
+      "page": "page-1",
+      "text": "P0 검증 과제.\npreview의 standings가 한화·롯데 양쪽 모두 rank 8로 내려왔다. 순위 뱃지 대신 승-패를 쓴 이유이고, 신뢰하기 전에 검증이 필요하다."
+    },
+    {
+      "id": "order-flip",
+      "x": 0,
+      "y": -180,
+      "w": 900,
+      "page": "page-2",
+      "text": "왜 순서를 뒤집었나, 그리고 두 사이트를 무엇으로 잇나.\n이 세 장이 로드맵 문서(docs/ROADMAP_V2.md)의 근거 그림이다."
+    }
+  ],
+  "launch": {
+    "view": "canvas",
+    "page": "page-1"
+  }
+}

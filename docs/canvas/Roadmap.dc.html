@@ -1,0 +1,115 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+:root{--page:#f4f2eb;--surface-strong:#ffffff;--surface-muted:#eeece4;--ink:#142033;--ink-soft:#53627a;--ink-faint:#817e73;--line:#ded9cc;--line-strong:#c9c2b2;--accent:#2454d9;--accent-soft:#e7edff;--amber:#a44b0c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;line-height:1.45;word-break:keep-all;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none} a:hover{color:#1c44b3}
+.tab-num{font-variant-numeric:tabular-nums}
+.pcard{border:1px solid var(--line);border-radius:14px;background:#ffffff;padding:16px 17px;box-shadow:0 10px 26px rgba(54,47,34,.06);height:100%}
+.pno{display:inline-flex;align-items:center;justify-content:center;height:22px;padding:0 9px;border-radius:6px;background:var(--surface-muted);color:var(--ink-soft);font-size:11px;font-weight:850;letter-spacing:.04em}
+.ptitle{display:block;margin:9px 0 6px;font-size:16px;font-weight:850;letter-spacing:-0.03em}
+.pdesc{display:block;color:var(--ink-soft);font-size:12.5px;line-height:1.5}
+.pout{display:block;margin-top:11px;padding-top:10px;border-top:1px solid var(--line);color:var(--ink-faint);font-size:11.5px;line-height:1.5}
+.arrow{display:flex;align-items:center;justify-content:center}
+</style>
+</helmet>
+
+<div style="min-height:100%;background:var(--page);padding:38px 40px 34px">
+
+  <p style="margin:0 0 6px;color:var(--ink-faint);font-size:12px;font-weight:800;letter-spacing:.08em">로드맵 v2</p>
+  <h1 style="margin:0 0 8px;font-size:32px;font-weight:850;letter-spacing:-0.045em">엔드포인트 하나가 화면 셋을 연다</h1>
+  <p style="margin:0 0 32px;max-width:840px;color:var(--ink-soft);font-size:15px;line-height:1.6">
+    기존 청사진은 2단계를 알림으로 잡았다. 뒤집는다 — 알림은 인프라 전부가 필요한데 알릴 콘텐츠가 하나뿐이고,
+    프리뷰는 수집기 하나로 다섯 기능이 한꺼번에 열린다.
+  </p>
+
+  <!-- main lane -->
+  <div style="display:grid;grid-template-columns:1fr 44px 1fr 44px 1fr 44px 1fr 44px 1fr;align-items:stretch;gap:0">
+    <div class="pcard" style="border-color:var(--accent);border-width:2px">
+      <span class="pno" style="background:var(--accent-soft);color:var(--accent)">P0 · 기반</span>
+      <strong class="ptitle">프리뷰 수집 파이프라인</strong>
+      <span class="pdesc">네이버 preview 하나에서 선발 · 라인업 · 불펜 · 순위 · 상대전적을 정규화해 D1에 넣는다. 화면 작업 없음.</span>
+      <span class="pout"><strong>산출</strong> game_previews · /api/preview-ingest · lineup_state 전이 테스트</span>
+    </div>
+    <div class="arrow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c9c2b2" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5.5 15.5 12 9 18.5"></path></svg></div>
+
+    <div class="pcard">
+      <span class="pno">P1</span>
+      <strong class="ptitle">오늘 화면 선발 매치업</strong>
+      <span class="pdesc">히어로 카드가 경기까지 남은 시간에 따라 블록을 하나씩 늘린다. 매일 바뀌는 첫 콘텐츠.</span>
+      <span class="pout"><strong>산출</strong> renderNextGame 확장 · 상태 전환 6단계</span>
+    </div>
+    <div class="arrow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c9c2b2" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5.5 15.5 12 9 18.5"></path></svg></div>
+
+    <div class="pcard">
+      <span class="pno">P2</span>
+      <strong class="ptitle">경기 상세 라인업 탭</strong>
+      <span class="pdesc">개요/타자/투수 → 개요/<strong style="color:var(--ink)">라인업</strong>/타자/투수. 경기 전엔 예고, 후엔 실제 출장.</span>
+      <span class="pout"><strong>산출</strong> 탭 4열 · 팀 토글 · 불펜/대기 접힘</span>
+    </div>
+    <div class="arrow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c9c2b2" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5.5 15.5 12 9 18.5"></path></svg></div>
+
+    <div class="pcard" style="border-color:var(--amber)">
+      <span class="pno" style="background:#fff2e3;color:var(--amber)">P4</span>
+      <strong class="ptitle">Who Are Ya 연계</strong>
+      <span class="pdesc">선수 마스터를 받아 프로필 시트를, 등록 명단을 내보내 정답 풀 신선도를 올린다.</span>
+      <span class="pout"><strong>산출</strong> /api/players 프록시 · registered.json · 교차 카드</span>
+    </div>
+    <div class="arrow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c9c2b2" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5.5 15.5 12 9 18.5"></path></svg></div>
+
+    <div class="pcard" style="border-style:dashed">
+      <span class="pno">P5</span>
+      <strong class="ptitle">알림 · iCal</strong>
+      <span class="pdesc">알릴 거리가 셋이 된 뒤에 만든다 — 예매 오픈 · 선발 예고 · 라인업 공개. iCal을 먼저.</span>
+      <span class="pout"><strong>착수 전 재검토</strong> P1~P4 실사용 반응을 보고 프롬프트를 새로 쓴다</span>
+    </div>
+  </div>
+
+  <!-- side lanes -->
+  <div style="display:grid;grid-template-columns:1fr 44px 1fr 44px 1fr 44px 1fr 44px 1fr;align-items:stretch;margin-top:22px">
+    <div class="pcard" style="grid-column:1 / 6;border-color:var(--line-strong)">
+      <div style="display:flex;align-items:flex-start;gap:20px">
+        <div style="flex:1">
+          <span class="pno">P3 · 병렬</span>
+          <strong class="ptitle">내 팀 화면 — 1군 등록과 등말소</strong>
+          <span class="pdesc">P0~P2와 의존이 없어 동시에 갈 수 있다. 하단 내비를 오늘/일정/<strong style="color:var(--ink)">내 팀</strong>/설정 4탭으로 늘린다.</span>
+        </div>
+        <div style="flex:1.15;padding:13px 15px;border-radius:11px;background:#fae9e9;border:1px solid rgba(151,60,66,.28)">
+          <strong style="display:block;margin-bottom:5px;font-size:12.5px;color:#973c42">이 단계의 진짜 난이도</strong>
+          <span style="display:block;color:var(--ink-soft);font-size:12px;line-height:1.55">
+            당일 등말소는 <strong style="color:var(--ink)">그날만 조회된다</strong>. 하루 놓치면 영영 복구 불가 —
+            크론 실패가 반드시 실패로 끝나야 하고, 전일 스냅샷 diff를 이중 안전장치로 둔다.
+          </span>
+        </div>
+      </div>
+      <span class="pout"><strong>산출</strong> roster_entries · roster_transactions · scrape-roster.mjs (Who Are Ya 스크립트 이식) · 매일 06:00 크론</span>
+    </div>
+
+    <div style="grid-column:6 / 8"></div>
+
+    <div class="pcard" style="grid-column:3 / 6;margin-top:16px;border-style:dashed">
+      <span class="pno">P6 · 덤</span>
+      <strong class="ptitle">순위 · 매직넘버</strong>
+      <span class="pdesc">standings는 P0에서 이미 저장된다. <strong style="color:var(--ink)">추가 수집이 0</strong>인 유일한 기능 — 화면 작업만 남는다.</span>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:14px;margin-top:26px;padding:16px 20px;border:1px solid var(--line);border-radius:14px;background:#ffffff;align-items:center">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#53627a" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto"><circle cx="12" cy="12" r="9"></circle><path d="M12 8h.01M11 12h1v4h1"></path></svg>
+    <span style="color:var(--ink-soft);font-size:13.5px;line-height:1.55">
+      각 단계는 <strong style="color:var(--ink)">한 세션 한 단계</strong>로 끊는다. 스키마와 UI 규칙이 프롬프트에 이미 고정돼 있어 탐색 비용이 낮다 —
+      P0~P3은 중간 수준 모델로 충분하고, 두 저장소를 오가는 P4만 한 단계 올린다.
+    </span>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
