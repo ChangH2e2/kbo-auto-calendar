@@ -3,6 +3,7 @@
 // (2026-09-05~06 실측 간격 105~280분) 라이브 갱신을 그쪽에 의존할 수 없다.
 // 이 엔드포인트는 Cloudflare Worker 크론(workers/live-cron)이 1분마다 호출한다.
 import { normalizePreview, PREVIEW_UPSERT, previewValues } from './preview-ingest.js';
+import { dispatchEvents } from './push/dispatch.js';
 
 const NAVER_GAMES = 'https://api-gw.sports.naver.com/schedule/games';
 const NAVER_HEADERS = { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' };
@@ -125,7 +126,7 @@ export async function onRequestPost(context) {
 
   let games = [];
   try {
-    const result = await db.prepare(`SELECT g.id, g.starts_at, g.status,
+    const result = await db.prepare(`SELECT g.id, g.starts_at, g.status, g.away_team, g.home_team,
         p.lineup_state, p.checked_at AS preview_checked_at
       FROM games g LEFT JOIN game_previews p ON p.game_id = g.id
       WHERE g.date = ?1 ORDER BY g.starts_at ASC`).bind(today).all();
@@ -146,11 +147,17 @@ export async function onRequestPost(context) {
   let polled = 0;
   let previewed = 0;
 
+  const events = [];
   for (const game of liveTargets) {
     const payload = await fetchJson(`${NAVER_GAMES}/${naverGameId(game.id)}/game-polling`);
     const patch = normalizePolling(payload?.result?.game);
     if (!patch) continue;
     polled += 1;
+    // 이번 갱신에서 처음 종료로 넘어간 경기만 알린다.
+    if (patch.status === 'final' && game.status !== 'final' && patch.away_score != null && patch.home_score != null) {
+      events.push({ topic: 'final', game_id: game.id, away: game.away_team, home: game.home_team,
+        away_score: patch.away_score, home_score: patch.home_score });
+    }
     const update = buildLiveUpdate(game.id, patch, new Date().toISOString());
     if (update) statements.push(db.prepare(update.sql).bind(...update.binds));
   }
@@ -164,6 +171,10 @@ export async function onRequestPost(context) {
       checked_at: new Date().toISOString(), previewData });
     if (!row) continue;
     previewed += 1;
+    // 라인업이 이번에 처음 확정된 경기만 알린다.
+    if (row.lineup_state === 'announced' && game.lineup_state !== 'announced') {
+      events.push({ topic: 'lineup', game_id: game.id, away: game.away_team, home: game.home_team });
+    }
     statements.push(db.prepare(PREVIEW_UPSERT).bind(...previewValues(row)));
   }
 
@@ -188,10 +199,15 @@ export async function onRequestPost(context) {
   try {
     await db.batch(statements);
     await log('success', statements.length).run();
+    // 알림은 갱신을 막지 않는다. 실패해도 데이터는 이미 저장됐다.
+    if (events.length && context.env.VAPID_PRIVATE_JWK) {
+      context.waitUntil(dispatchEvents(db, context.env, events, new Date().toISOString())
+        .catch((error) => console.error('push_dispatch_failed', String(error))));
+    }
   } catch (error) {
     console.error('live_refresh_write_failed', String(error));
     await log('failed', 0, 'Live refresh write failed').run().catch(() => {});
     return Response.json({ error: '라이브 갱신 저장에 실패했습니다.' }, { status: 500 });
   }
-  return Response.json({ polled, previewed, written: statements.length, date: today });
+  return Response.json({ polled, previewed, written: statements.length, events: events.length, date: today });
 }

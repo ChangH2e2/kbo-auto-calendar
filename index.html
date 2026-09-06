@@ -12,7 +12,7 @@
   <link rel="manifest" href="/manifest.json">
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="/styles.css?v=20260906-standings">
+  <link rel="stylesheet" href="/styles.css?v=20260906-push">
 </head>
 <body>
   <div class="app-shell">
@@ -132,6 +132,10 @@
             <p class="settings-hint">응원팀 설정은 로그인 없이 이 브라우저·기기에만 저장됩니다. 다른 기기에서는 다시 선택해 주세요.</p>
             <button class="secondary-button settings-reset" id="resetPreferences" type="button">이 기기의 응원팀 설정 지우기</button>
           </section>
+          <section class="settings-section" id="pushSection">
+            <h2>경기 알림</h2>
+            <div id="pushMount"></div>
+          </section>
           <section class="settings-section source-card">
             <div>
               <h2>데이터 출처</h2>
@@ -171,6 +175,6 @@
     <div class="player-sheet-body" id="playerSheetBody"></div>
   </dialog>
 
-  <script src="/app.js?v=20260906-standings" defer></script>
+  <script src="/app.js?v=20260906-push" defer></script>
 </body>
 </html>
