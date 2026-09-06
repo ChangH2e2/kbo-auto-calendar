@@ -20,6 +20,19 @@ class FakeResponse:
 
 
 class CrawlingTests(unittest.TestCase):
+    def test_recovers_missing_live_game_and_started_status(self):
+        stored = {'game_id':'20260906NCWO0','date':'2026-09-06','time':'14:00','away':'NC','home':'키움','status':'scheduled'}
+        responses = [FakeResponse({'games':[stored]}),
+            FakeResponse({'result':{'games':[{'gameId':'20260906NCWO02026','awayTeamName':'NC','homeTeamName':'키움'}]}}),
+            FakeResponse({'result':{'game':{'statusCode':'STARTED','currentInning':'3회초','awayTeamScore':0,'homeTeamScore':0}}})]
+        with patch.object(crawling,'NAVER_LIVE',True), patch.object(crawling,'korea_today',return_value=datetime.date(2026,9,6)), patch.dict(crawling.os.environ,{'KBO_INGEST_URL':'https://example.com'}), patch.object(crawling.requests,'get',side_effect=responses):
+            games=crawling.enrich_with_naver_live([])
+        self.assertEqual(len(games),1)
+        self.assertEqual(games[0]['status'],'live')
+        self.assertEqual(games[0]['away_score'],0)
+        self.assertEqual(games[0]['status_note'],'3회초')
+        self.assertNotIn('status_note',stored)
+
     def test_holidays_keep_fixed_dates_without_api_key(self):
         with patch.object(crawling, "HOLIDAY_API_KEY", ""), patch.object(crawling.requests, "get") as get:
             holidays = crawling.get_holidays("2026")

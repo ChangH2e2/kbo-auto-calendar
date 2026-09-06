@@ -245,7 +245,7 @@ def normalize_naver_polling(game, polling):
         result.update({"status": "scheduled", "home_score": None, "away_score": None,
                        "home_line": None, "away_line": None, "home_rheb": None, "away_rheb": None})
         return result
-    elif status_code in {"INGAME", "IN_PROGRESS", "PLAYING", "LIVE"}:
+    elif status_code in {"STARTED", "INGAME", "IN_PROGRESS", "PLAYING", "LIVE"}:
         result["status"] = "live"
     elif status_code in {"RESULT", "FINAL", "END"}:
         result["status"] = "final"
@@ -260,8 +260,8 @@ def normalize_naver_polling(game, polling):
         rhe = polling.get(f"{side}TeamRheb")
         if isinstance(rhe, list) and rhe:
             result[f"{side}_rheb"] = "|".join(str(value) for value in rhe)
-    if polling.get("statusInfo"):
-        result["status_note"] = polling["statusInfo"]
+    if polling.get("currentInning") or polling.get("statusInfo"):
+        result["status_note"] = polling.get("currentInning") or polling["statusInfo"]
     return result
 
 def enrich_with_naver_live(all_results):
@@ -269,7 +269,21 @@ def enrich_with_naver_live(all_results):
     if not NAVER_LIVE:
         return all_results
     today = korea_today().isoformat()
+    # A live game can disappear from KBO's monthly response. Keep tracking its stored ID.
+    known_ids = {game['game_id'] for game in all_results}
+    recovered = {}
+    ingest_url = os.environ.get('KBO_INGEST_URL', '').strip().rstrip('/')
+    if ingest_url:
+        try:
+            stored = requests.get(f'{ingest_url}/api/games', params={'from': today, 'to': today}, timeout=8)
+            stored.raise_for_status()
+            for game in stored.json()['games']:
+                if game.get('game_id') not in known_ids and game.get('status') not in ('cancelled', 'postponed'):
+                    recovered[game['game_id']] = dict(game)
+        except Exception as exc:
+            print(f'중계 대상 복구 조회 실패: {type(exc).__name__}')
     targets = [game for game in all_results if game.get("date") == today and not game.get("is_cancel")]
+    targets += list(recovered.values())
     if not targets:
         return all_results
     try:
@@ -282,11 +296,13 @@ def enrich_with_naver_live(all_results):
     except Exception as exc:
         print(f"네이버 일정 보강 실패: {exc}")
         return all_results
-    by_teams = {(g.get("away"), g.get("home")): g for g in targets}
+    by_id = {g['game_id'] + g['date'][:4]: g for g in targets}
     for naver_game in naver_games:
         key = (naver_game.get("awayTeamName"), naver_game.get("homeTeamName"))
-        target = by_teams.get(key)
         naver_id = naver_game.get("gameId")
+        target = by_id.get(naver_id)
+        if target and key != (target.get('away'), target.get('home')):
+            continue
         if not target or not naver_id:
             continue
         try:
@@ -300,6 +316,9 @@ def enrich_with_naver_live(all_results):
             else:
                 target.update({key: value for key, value in update.items() if value is not None})
             target["naver_game_id"] = naver_id
+            if update and target['game_id'] in recovered:
+                all_results.append(target)
+                del recovered[target['game_id']]
         except Exception as exc:
             print(f"네이버 경기 보강 실패 ({naver_id}): {exc}")
     return all_results

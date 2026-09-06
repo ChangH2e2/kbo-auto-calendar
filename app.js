@@ -163,7 +163,7 @@ function getStatusText(game) {
   const status = getGameState(game);
   if (status === "cancelled") return game.status_note || "취소";
   if (status === "postponed") return game.status_note || "연기";
-  if (status === "live") return `LIVE ${game.inning || "진행 중"}`;
+  if (status === "live") return `LIVE ${game.inning || game.status_note || "진행 중"}`;
   if (status === "final") return "종료";
   return game.time;
 }
@@ -740,7 +740,7 @@ function renderGameDetail(game) {
 function detailNote(game, status) {
   if (status === "cancelled") return game.status_note || "경기가 취소되었습니다.";
   if (status === "postponed") return game.status_note || "경기가 연기되었습니다. 변경 일정을 확인해 주세요.";
-  if (status === "live") return `${game.inning || "경기 진행 중"} / 점수는 수집 주기에 따라 늦게 반영될 수 있습니다.`;
+  if (status === "live") return `${game.inning || game.status_note || "경기 진행 중"} / 점수는 수집 주기에 따라 늦게 반영될 수 있습니다.`;
   if (status === "final") return `${Math.max(splitLine(game.away_line).length, splitLine(game.home_line).length, 9)}회 경기 종료`;
   return game.broadcast ? `중계 ${game.broadcast}` : "경기 시작 전입니다.";
 }
