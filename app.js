@@ -65,6 +65,8 @@ const state = {
   ingestionRuns: {},
   roster: null,
   players: null,
+  standings: null,
+  standingsState: "idle",
   playersState: "idle",
   rosterState: "idle",
   ticketRules: { ...DEFAULT_TICKET_RULES },
@@ -1254,7 +1256,7 @@ function syncUrl(push) {
 function setActiveView(view) {
   if (!["today", "schedule", "team", "settings"].includes(view)) return;
   state.activeView = view;
-  if (view === "team") fetchRoster();
+  if (view === "team") { fetchRoster(); fetchStandings(); }
   document.querySelectorAll("[data-view-panel]").forEach((panel) => { panel.hidden = panel.dataset.viewPanel !== view; });
   document.querySelectorAll("[data-view]").forEach((button) => button.classList.toggle("is-active", button.dataset.view === view));
   window.scrollTo({ top: 0, behavior: "auto" });
@@ -1348,6 +1350,71 @@ function rosterListHtml(roster) {
   return `<section class="card team-card"><div class="team-card-head"><h2>등록 명단</h2></div>${groups}</section>`;
 }
 
+/* ── 순위와 매직넘버 ────────────────────────────────────────────────────
+   game_previews가 경기마다 양 팀 순위를 담고 있어 추가 수집이 없다. */
+
+async function fetchStandings() {
+  if (demoMode || state.standingsState === "loading" || state.standingsState === "ready") return;
+  state.standingsState = "loading";
+  try {
+    const response = await fetch("/api/standings");
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const payload = await response.json();
+    state.standings = Array.isArray(payload.standings) && payload.standings.length ? payload : null;
+    state.standingsState = state.standings ? "ready" : "error";
+  } catch (error) {
+    console.warn("Standings request failed", error);
+    state.standingsState = "error";
+  }
+  renderTeam();
+}
+
+function magicLineHtml(row, table) {
+  if (row.playoff_clinched) return `<span class="magic is-clinched">포스트시즌 진출 확정</span>`;
+  if (row.playoff_magic !== null) {
+    return `<span class="magic">진출 매직넘버 <strong>${escapeHtml(row.playoff_magic)}</strong></span>`;
+  }
+  const fifth = table[4];
+  if (!fifth) return "";
+  const behind = ((fifth.w - row.w) + (row.l - fifth.l)) / 2;
+  return `<span class="magic is-chasing">5위와 <strong>${escapeHtml(behind.toFixed(1))}</strong>게임차</span>`;
+}
+
+function standingsCardHtml(team) {
+  const payload = state.standings;
+  if (!payload) return "";
+  const table = payload.standings;
+  const row = table.find((entry) => entry.team === team);
+  if (!row) return "";
+  const rateText = row.win_rate.toFixed(3).replace(/^0/, "");
+  const rows = table.map((entry) => `<li class="rank-row${entry.team === team ? " is-mine" : ""}" style="${teamStyle(entry.team)}">
+      <span class="rank-no">${escapeHtml(entry.position)}</span>
+      <span class="team-dot"></span>
+      <strong class="rank-team">${escapeHtml(entry.team)}</strong>
+      <span class="rank-record">${escapeHtml(entry.w)}승 ${escapeHtml(entry.l)}패${entry.d ? ` ${escapeHtml(entry.d)}무` : ""}</span>
+      <span class="rank-rate">${escapeHtml(entry.win_rate.toFixed(3).replace(/^0/, ""))}</span>
+      <span class="rank-gb">${entry.games_behind ? escapeHtml(entry.games_behind.toFixed(1)) : "-"}</span>
+    </li>`).join("");
+  return `<section class="card team-card standings-card">
+      <div class="team-card-head"><h2>순위</h2><span>잔여 ${escapeHtml(row.remaining)}경기</span></div>
+      <div class="standing-summary">
+        <span class="standing-rank">${escapeHtml(row.position)}<small>위</small></span>
+        <span class="standing-record">
+          <strong>${escapeHtml(row.w)}승 ${escapeHtml(row.l)}패${row.d ? ` ${escapeHtml(row.d)}무` : ""}</strong>
+          <small>승률 ${escapeHtml(rateText)}${row.games_behind ? ` · 1위와 ${escapeHtml(row.games_behind.toFixed(1))}게임차` : " · 선두"}</small>
+        </span>
+      </div>
+      <div class="standing-magic">${magicLineHtml(row, table)}${row.title_magic !== null ? `<span class="magic">우승 매직넘버 <strong>${escapeHtml(row.title_magic)}</strong></span>` : ""}</div>
+      <details class="lineup-fold"><summary>전체 순위<b>10팀</b></summary>
+        <ol class="rank-list">
+          <li class="rank-row is-head"><span>순위</span><span></span><span>팀</span><span>전적</span><span>승률</span><span>GB</span></li>
+          ${rows}
+        </ol>
+      </details>
+      <p class="standing-note">매직넘버는 승수 기준 통상 계산입니다. 무승부와 상대전적 타이브레이크는 반영하지 않습니다.</p>
+    </section>`;
+}
+
 // 캘린더 구독. webcal://은 iOS·macOS 캘린더가 바로 받고,
 // 구글 캘린더는 https 주소를 'URL로 추가'에 붙여 넣어야 해서 복사 버튼을 같이 둔다.
 function calendarCardHtml(team) {
@@ -1394,6 +1461,7 @@ function renderTeam() {
     </section>
     ${todayChangesHtml(roster)}
     ${recentChangesHtml(roster)}
+    ${standingsCardHtml(viewTeam)}
     ${rosterListHtml(roster)}
     ${calendarCardHtml(viewTeam)}
     <p class="freshness">KBO 공식 등록 현황${roster.as_of ? ` · ${escapeHtml(roster.as_of)} 기준` : ""}</p>`;

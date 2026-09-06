@@ -621,3 +621,25 @@ button.lineup-notice:hover { border-color: var(--accent); }
 .calendar-hint { margin: 0; padding: 12px 18px 18px; color: var(--ink-faint); font-size: 12px; line-height: 1.5; }
 .calendar-hint strong { color: var(--ink-soft); }
 @media (max-width: 380px) { .calendar-actions { grid-template-columns: 1fr; } }
+
+/* ── 순위와 매직넘버 ─────────────────────────────────────────────────────── */
+.standing-summary { display: flex; align-items: center; gap: 16px; padding: 0 18px 14px; }
+.standing-rank { font-size: 40px; font-weight: 850; letter-spacing: -0.05em; line-height: 1; font-variant-numeric: tabular-nums; }
+.standing-rank small { margin-left: 2px; font-size: 16px; font-weight: 750; color: var(--ink-soft); letter-spacing: 0; }
+.standing-record strong { display: block; font-size: 16px; font-variant-numeric: tabular-nums; }
+.standing-record small { display: block; margin-top: 3px; color: var(--ink-soft); font-size: 13px; font-variant-numeric: tabular-nums; }
+.standing-magic { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 18px 14px; }
+.magic { display: inline-flex; align-items: center; gap: 5px; padding: 7px 11px; border-radius: 9px; background: var(--accent-soft); color: var(--accent); font-size: 13px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.magic strong { font-size: 15px; font-weight: 850; }
+.magic.is-clinched { background: var(--surface-muted); color: var(--ink); }
+.magic.is-chasing { background: var(--surface-muted); color: var(--ink-soft); }
+.rank-list { margin: 0; padding: 6px 14px 12px; list-style: none; display: grid; gap: 1px; }
+.rank-row { display: grid; grid-template-columns: 26px 10px minmax(0, 1fr) 82px 42px 34px; align-items: center; gap: 8px; min-height: 36px; font-variant-numeric: tabular-nums; }
+.rank-row.is-head { min-height: 28px; color: var(--ink-faint); font-size: 11px; font-weight: 750; }
+.rank-row.is-head span:nth-child(4), .rank-row.is-head span:nth-child(5), .rank-row.is-head span:last-child { text-align: right; }
+.rank-row.is-mine { margin: 0 -8px; padding: 0 8px; border-radius: 8px; background: var(--accent-soft); }
+.rank-no { color: var(--ink-faint); font-size: 13px; font-weight: 800; }
+.rank-team { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-record { color: var(--ink-soft); font-size: 12px; text-align: right; }
+.rank-rate, .rank-gb { color: var(--ink-soft); font-size: 12px; text-align: right; }
+.standing-note { margin: 0; padding: 10px 18px 18px; color: var(--ink-faint); font-size: 11.5px; line-height: 1.5; }
