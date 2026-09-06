@@ -529,3 +529,55 @@ button.lineup-notice:hover { border-color: var(--accent); }
   .lineup-row { grid-template-columns: 26px 36px 24px minmax(0, 1fr) 30px; gap: 7px; padding: 0 10px; }
   .starter-grid { grid-template-columns: minmax(0, 1fr) 66px minmax(0, 1fr); }
 }
+
+/* ── 내 팀: 1군 등록 현황과 등록/말소 ─────────────────────────────────────── */
+
+.mobile-bottom-nav { grid-template-columns: repeat(4, 1fr); }
+
+.team-layout { display: grid; gap: 16px; padding-top: 18px; }
+.team-heading { display: flex; align-items: center; gap: 11px; }
+.team-heading h1 { margin: 0; font-size: 25px; letter-spacing: -0.045em; }
+.team-heading .team-dot { width: 16px; height: 16px; }
+.team-heading .text-button { margin-left: auto; }
+
+.card { border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface-strong); box-shadow: var(--shadow); }
+.team-card { overflow: hidden; }
+.team-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 16px 18px 12px; }
+.team-card-head h2 { margin: 0; padding: 0; font-size: 18px; letter-spacing: -0.03em; }
+.team-card-head span { color: var(--ink-soft); font-size: 13px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.roster-total { font-size: 26px; font-weight: 850; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+.roster-total span { margin-left: 2px; color: var(--ink-soft); font-size: 14px; font-weight: 750; }
+
+.count-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 0 18px 18px; }
+.count-tile { padding: 11px 8px; border-radius: var(--radius-control); background: var(--surface-muted); text-align: center; }
+.count-tile strong { display: block; font-size: 19px; font-weight: 850; font-variant-numeric: tabular-nums; }
+.count-tile span { color: var(--ink-soft); font-size: 11px; font-weight: 750; }
+
+.tx-list { margin: 0; padding: 0 18px 8px; list-style: none; }
+.tx-row { display: grid; grid-template-columns: 42px 28px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 46px; border-top: 1px solid var(--line); }
+.tx-list .tx-row:first-child { border-top: 0; }
+.tx-kind { font-size: 12px; font-weight: 800; }
+.tx-row.is-register .tx-kind { color: var(--accent); }
+.tx-row.is-remove .tx-kind { color: var(--danger); }
+.tx-no { color: var(--ink-faint); font-size: 13px; font-weight: 750; font-variant-numeric: tabular-nums; text-align: right; }
+.tx-name { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tx-pos { color: var(--ink-soft); font-size: 12px; white-space: nowrap; }
+
+.tx-group { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 6px; padding: 0 18px; border-top: 1px solid var(--line); }
+.tx-group:first-of-type { border-top: 0; }
+.tx-date { padding-top: 15px; color: var(--ink-faint); font-size: 13px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.tx-group .tx-list { padding: 0 0 6px; }
+.tx-group .tx-row { grid-template-columns: 42px 28px minmax(0, 1fr) auto; min-height: 40px; }
+
+.team-quiet { margin: 0; padding: 2px 18px 20px; }
+.team-quiet strong { display: block; font-size: 16px; font-weight: 800; color: var(--ink-soft); }
+.team-quiet span { display: block; margin-top: 5px; color: var(--ink-faint); font-size: 13px; font-variant-numeric: tabular-nums; }
+
+.team-card .lineup-fold { margin: 0 18px 12px; }
+.roster-list { margin: 0; padding: 6px 14px 12px; list-style: none; display: grid; gap: 2px; }
+.roster-list li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 36px; }
+.roster-list strong { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (min-width: 960px) {
+  .team-layout { max-width: 720px; }
+}
