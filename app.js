@@ -673,6 +673,7 @@ function lineupNoticeHtml(game, preview) {
   }
   if (toISODate(startsAt) !== toISODate(today) || startsAt.getTime() <= Date.now()) return "";
   const openAt = new Date(startsAt.getTime() - 2 * 60 * 60 * 1000);
+  if (openAt.getTime() <= Date.now()) return `<p class="lineup-notice">라인업 발표를 기다리는 중입니다</p>`;
   return `<p class="lineup-notice">라인업은 <strong>${escapeHtml(formatTime(openAt))}</strong> 전후 공개됩니다</p>`;
 }
 
@@ -955,6 +956,12 @@ function scoreboardHtml(game) {
     <section class="detail-card"><h2>이닝별 득점 <span class="inning-count">${inningCount}회</span></h2><div class="score-scroll" role="region" aria-label="이닝별 득점 표"><table class="scoreboard"><thead><tr><th class="sticky-team">팀</th>${innings}<th class="total-r">R</th><th class="total-h">H</th><th class="total-e">E</th></tr></thead><tbody>${row(game.away, away, awayTotals)}${row(game.home, home, homeTotals)}</tbody></table></div><p class="score-hint">전체 이닝과 R·H·E를 표시합니다. 표는 좌우로 밀어 확인할 수 있습니다.</p></section>`;
 }
 
+// batorder가 없는 항목(선발투수)은 null로 온다. Number(null)이 0이라 정수 검사만으로는 걸러지지 않는다.
+function battingOrder(player) {
+  const order = Number(player && player.batorder);
+  return Number.isInteger(order) && order >= 1 && order <= 9 ? order : null;
+}
+
 function lineupTeamSide(game) {
   if (state.detailLineupTeam === "home" || state.detailLineupTeam === "away") return state.detailLineupTeam;
   return game.home === state.favoriteTeam ? "home" : "away";
@@ -981,12 +988,12 @@ function lineupPanelHtml(game) {
   if (!preview) return `<div class="detail-empty">라인업 정보가 아직 수집되지 않았습니다.</div>`;
   const side = lineupTeamSide(game);
   const lineup = Array.isArray(preview[`${side}_lineup`]) ? preview[`${side}_lineup`] : [];
-  const starter = lineup.find((player) => !Number.isInteger(Number(player.batorder))) || preview[`${side}_starter`] || null;
+  const starter = lineup.find((player) => battingOrder(player) === null) || preview[`${side}_starter`] || null;
   const batters = lineup
-    .filter((player) => Number.isInteger(Number(player.batorder)))
-    .sort((a, b) => Number(a.batorder) - Number(b.batorder));
+    .filter((player) => battingOrder(player) !== null)
+    .sort((a, b) => battingOrder(a) - battingOrder(b));
   const starterRow = starter && starter.name
-    ? `<div class="lineup-starter"><span class="lineup-starter-label">${batters.length ? "선발" : "선발 예고"}</span>${starter.backnum ? `<span class="lineup-no">${escapeHtml(starter.backnum)}</span>` : ""}<strong>${escapeHtml(starter.name)}</strong><span class="lineup-hand">${escapeHtml(throwHand(starter.hitType))}</span></div>`
+    ? `<div class="lineup-starter"><span class="lineup-starter-label">${batters.length ? "선발" : "선발 예고"}</span>${starter.backnum ? `<span class="lineup-no">${escapeHtml(starter.backnum)}</span>` : ""}<strong>${escapeHtml(starter.name)}</strong><span class="lineup-hand">${escapeHtml(throwHand(starter.hitType) || starter.batsThrows || "")}</span></div>`
     : "";
   const checked = preview.checked_at ? new Date(preview.checked_at) : null;
   const checkedText = checked && !Number.isNaN(checked.getTime()) ? `${formatTime(checked)} 확인` : "";
@@ -1003,7 +1010,7 @@ function lineupPanelHtml(game) {
 
   const rows = batters.map((player) => {
     const position = POSITION_SHORT[player.positionName] || player.positionName || "-";
-    return `<div class="lineup-row"><span class="lineup-order">${escapeHtml(player.batorder)}</span><span class="lineup-pos">${escapeHtml(position)}</span><span class="lineup-no">${escapeHtml(player.backnum || "")}</span><strong class="lineup-name">${escapeHtml(player.name)}</strong><span class="lineup-hand">${escapeHtml(player.batsThrows || "")}</span></div>`;
+    return `<div class="lineup-row"><span class="lineup-order">${escapeHtml(battingOrder(player))}</span><span class="lineup-pos">${escapeHtml(position)}</span><span class="lineup-no">${escapeHtml(player.backnum || "")}</span><strong class="lineup-name">${escapeHtml(player.name)}</strong><span class="lineup-hand">${escapeHtml(player.batsThrows || "")}</span></div>`;
   }).join("");
 
   const note = getGameState(game) === "scheduled" ? "" : `<p class="lineup-source">예고 라인업입니다. 실제 출장 기록은 타자·투수 탭에서 확인하세요.</p>`;
