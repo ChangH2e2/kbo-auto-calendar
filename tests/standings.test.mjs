@@ -60,10 +60,33 @@ test('이미 확정이면 매직넘버가 0이고 확정 표시가 붙는다', (
   assert.equal(table[1].playoff_clinched, false);
 });
 
-test('승률이 같으면 승수, 그다음 패수로 가른다', () => {
-  // LEAGUE에 이미 한화·롯데가 있어 상위 6팀만 붙인다.
-  const table = buildStandings([team(51, 65, 3, '한화'), team(51, 65, 2, '롯데'), ...LEAGUE.slice(0, 6)]);
-  const tied = table.filter((t) => ['한화', '롯데'].includes(t.team));
-  assert.equal(tied.length, 2);
-  assert.equal(Math.abs(tied[0].position - tied[1].position), 1, '동률이어도 순번은 이어진다');
+test('승률이 같으면 순위는 같고, 표 안 순서는 승수·패수로 가른다', () => {
+  const table = buildStandings([team(50, 66, 0, '뒤'), team(52, 64, 0, '앞'), ...LEAGUE.slice(0, 6)]);
+  const rows = table.filter((t) => ['앞', '뒤'].includes(t.team));
+  assert.equal(rows.length, 2);
+  assert.notEqual(rows[0].win_rate, rows[1].win_rate, '이 두 팀은 승률이 다르다');
+  assert.ok(table.findIndex((t) => t.team === '앞') < table.findIndex((t) => t.team === '뒤'));
+});
+
+test('승률 동률은 공동 순위이고 다음 순위를 건너뛴다 — KBO 표기', () => {
+  const table = buildStandings(LEAGUE);
+  const 한화 = table.find((t) => t.team === '한화');
+  const 롯데 = table.find((t) => t.team === '롯데');
+  const 키움 = table.find((t) => t.team === '키움');
+  assert.equal(한화.position, 롯데.position, '.440 동률은 공동 순위');
+  assert.equal(한화.position, 8);
+  assert.equal(키움.position, 10, '공동 8위 다음은 9위가 아니라 10위');
+});
+
+test('공동 5위면 두 팀 모두 진출 매직넘버를 받는다', () => {
+  const tiedFifth = [
+    team(71, 46, 3, 'A'), team(69, 45, 3, 'B'), team(68, 52, 1, 'C'), team(65, 52, 2, 'D'),
+    team(61, 57, 4, 'E'), team(61, 57, 4, 'F'), team(52, 66, 5, 'G'), team(51, 65, 2, 'H'),
+    team(51, 65, 3, 'I'), team(43, 80, 3, 'J')
+  ];
+  const table = buildStandings(tiedFifth);
+  const fifths = table.filter((t) => t.position === 5);
+  assert.equal(fifths.length, 2);
+  for (const row of fifths) assert.ok(Number.isInteger(row.playoff_magic), row.team);
+  assert.equal(table.find((t) => t.team === 'G').playoff_magic, null);
 });

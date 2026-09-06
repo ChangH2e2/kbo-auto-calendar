@@ -27,16 +27,24 @@ export function buildStandings(rows) {
   const teams = rows
     .map((row) => ({ ...row, remaining: remainingGames(row), win_rate: Number(winRate(row).toFixed(3)) }))
     .sort((a, b) => b.win_rate - a.win_rate || b.w - a.w || a.l - b.l);
-  const leader = teams[0];
-  const cutoff = teams[PLAYOFF_SPOTS];        // 6위 — 진출 경쟁 상대
-  const runnerUp = teams[1];
-  return teams.map((team, index) => {
-    const position = index + 1;
+  // 승률이 같으면 공동 순위이고 다음 순위는 건너뛴다(한화·롯데 공동 8위 → 키움 10위).
+  let position = 0;
+  let previousRate = null;
+  const ranked = teams.map((team, index) => {
+    if (previousRate === null || team.win_rate !== previousRate) position = index + 1;
+    previousRate = team.win_rate;
+    return { ...team, position };
+  });
+  const leader = ranked[0];
+  const cutoff = ranked.find((team) => team.position > PLAYOFF_SPOTS);   // 진출권 밖 첫 팀
+  const runnerUp = ranked.find((team) => team.position > 1);
+  return ranked.map((team) => {
+    const position = team.position;
     const inRace = position <= PLAYOFF_SPOTS;
     const magic = inRace ? magicNumber(team, cutoff) : null;
     const titleMagic = position === 1 ? magicNumber(team, runnerUp) : null;
     return {
-      ...team, position,
+      ...team,
       games_behind: leader ? Number(gamesBehind(team, leader).toFixed(1)) : 0,
       // 매직넘버가 0 이하면 이미 확정이다.
       playoff_magic: magic === null ? null : Math.max(0, magic),
