@@ -1348,6 +1348,22 @@ function rosterListHtml(roster) {
   return `<section class="card team-card"><div class="team-card-head"><h2>등록 명단</h2></div>${groups}</section>`;
 }
 
+// 캘린더 구독. webcal://은 iOS·macOS 캘린더가 바로 받고,
+// 구글 캘린더는 https 주소를 'URL로 추가'에 붙여 넣어야 해서 복사 버튼을 같이 둔다.
+function calendarCardHtml(team) {
+  const path = `/api/calendar/${encodeURIComponent(team)}.ics`;
+  const httpsUrl = `${location.origin}${path}`;
+  return `<section class="card team-card calendar-card">
+      <div class="team-card-head"><h2>캘린더 구독</h2></div>
+      <p class="calendar-lead">${escapeHtml(team)} 경기 일정을 캘린더 앱에 넣어 두면 새 일정이 알아서 따라옵니다.</p>
+      <div class="calendar-actions">
+        <a class="primary-button" href="webcal://${escapeHtml(location.host)}${path}">캘린더에 추가</a>
+        <button class="secondary-button" type="button" data-copy-calendar="${escapeHtml(httpsUrl)}">주소 복사</button>
+      </div>
+      <p class="calendar-hint">구글 캘린더는 <strong>기타 캘린더 → URL로 추가</strong>에 복사한 주소를 붙여 넣으세요.</p>
+    </section>`;
+}
+
 function renderTeam() {
   if (!dom.team) return;
   const viewTeam = state.viewTeam || state.favoriteTeam;
@@ -1379,8 +1395,20 @@ function renderTeam() {
     ${todayChangesHtml(roster)}
     ${recentChangesHtml(roster)}
     ${rosterListHtml(roster)}
+    ${calendarCardHtml(viewTeam)}
     <p class="freshness">KBO 공식 등록 현황${roster.as_of ? ` · ${escapeHtml(roster.as_of)} 기준` : ""}</p>`;
   dom.team.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => setActiveView(button.dataset.view)));
+  dom.team.querySelectorAll("[data-copy-calendar]").forEach((button) => button.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(button.dataset.copyCalendar);
+      const original = button.textContent;
+      button.textContent = "복사했습니다";
+      setTimeout(() => { button.textContent = original; }, 1800);
+    } catch (error) {
+      console.warn("Clipboard failed", error);
+      button.textContent = "복사하지 못했습니다";
+    }
+  }));
 }
 
 // 주소로 들어온 경기는 데이터가 도착한 뒤에야 열 수 있다.
