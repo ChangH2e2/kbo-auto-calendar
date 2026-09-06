@@ -581,3 +581,36 @@ button.lineup-notice:hover { border-color: var(--accent); }
 @media (min-width: 960px) {
   .team-layout { max-width: 720px; }
 }
+
+/* ── 선수 프로필 시트 · 교차 유입 카드 ─────────────────────────────────── */
+
+.lineup-name { border: 0; background: transparent; padding: 0; font: inherit; font-size: 15px; text-align: left; color: inherit; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lineup-name:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+
+.player-sheet { width: 100%; max-width: 520px; margin: auto auto 0; padding: 0; border: 0; border-radius: 20px 20px 0 0; background: var(--surface-strong); color: var(--ink); }
+.player-sheet::backdrop { background: rgba(9, 14, 22, .55); }
+.player-sheet-body { padding: 18px 20px 26px; }
+.player-sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.player-sheet-title { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.player-no { color: var(--ink-faint); font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.player-sheet-title strong { font-size: 26px; font-weight: 850; letter-spacing: -0.04em; }
+.player-sheet-close { min-width: 44px; min-height: 44px; margin: -10px -10px 0 0; border: 0; background: transparent; color: var(--ink-soft); font-size: 17px; cursor: pointer; }
+.player-sheet-meta { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--ink-soft); font-size: 14px; font-weight: 700; }
+.player-sheet-meta .team-dot { width: 11px; height: 11px; }
+.player-sheet-facts { margin: 6px 0 0; color: var(--ink-soft); font-size: 14px; font-variant-numeric: tabular-nums; }
+.player-sheet-context { display: flex; align-items: center; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 15px; }
+.player-context-order { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 30px; border-radius: 9px; background: var(--accent-soft); color: var(--accent); font-weight: 850; font-variant-numeric: tabular-nums; }
+.player-context-game { margin-left: auto; color: var(--ink-soft); font-size: 13px; font-weight: 750; text-align: right; }
+.player-sheet-link { display: flex; align-items: center; gap: 12px; margin-top: 18px; padding: 14px 16px; border: 1px solid var(--line-strong); border-radius: var(--radius-control); background: var(--surface-muted); color: var(--ink); text-decoration: none; }
+.player-sheet-link:hover { border-color: var(--accent); color: var(--ink); }
+.player-sheet-link strong { display: block; font-size: 14px; }
+.player-sheet-link small { display: block; margin-top: 2px; color: var(--ink-soft); font-size: 12px; }
+.player-sheet-link > span:last-child { margin-left: auto; color: var(--ink-soft); }
+.player-sheet-empty { margin: 18px 0 0; color: var(--ink-faint); font-size: 13px; }
+
+.cross-link { display: grid; gap: 12px; margin-top: 16px; padding: 20px; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface-strong); box-shadow: var(--shadow); color: var(--ink); text-decoration: none; }
+.cross-link:hover { border-color: var(--accent); color: var(--ink); }
+.cross-link-lead { color: var(--ink-soft); font-size: 14px; font-weight: 750; }
+.cross-link-body strong { display: block; font-size: 16px; letter-spacing: -0.02em; }
+.cross-link-body small { display: block; margin-top: 3px; color: var(--ink-soft); font-size: 13px; }
+.cross-link-go { color: var(--accent); font-size: 14px; font-weight: 800; }

@@ -47,6 +47,8 @@ const state = {
   ingestionStatus: null,
   ingestionRuns: {},
   roster: null,
+  players: null,
+  playersState: "idle",
   rosterState: "idle",
   ticketRules: { ...DEFAULT_TICKET_RULES },
   detailTab: "score",
@@ -62,6 +64,8 @@ const dom = {
   notice: document.getElementById("dataNotice"),
   nextGame: document.getElementById("nextGameMount"),
   team: document.getElementById("teamMount"),
+  playerDialog: document.getElementById("playerDialog"),
+  playerSheet: document.getElementById("playerSheetBody"),
   todayGames: document.getElementById("todayGamesMount"),
   todayDate: document.getElementById("todayDateLabel"),
   todayFreshness: document.getElementById("todayFreshness"),
@@ -731,10 +735,29 @@ function renderNextGame() {
   updateCountdowns();
 }
 
+// 경기가 없는 날이거나 오늘 경기가 전부 끝난 뒤에만 보여준다.
+// 경기 전·중에 게임 링크가 예매와 라인업 앞을 가로막으면 앱의 목적이 흐려진다.
+function shouldShowCrossLink(games) {
+  if (!games.length) return true;
+  return games.every((game) => ["final", "cancelled", "postponed"].includes(getGameState(game)));
+}
+
+function crossLinkHtml(games) {
+  if (!shouldShowCrossLink(games)) return "";
+  return `<a class="cross-link" href="https://games.salarycrew.com/kbo/" target="_blank" rel="noopener">
+      <span class="cross-link-lead">${games.length ? "오늘 경기가 모두 끝났습니다" : "오늘은 경기가 없습니다"}</span>
+      <span class="cross-link-body">
+        <strong>야구 Who Are Ya</strong>
+        <small>오늘 1군 등록 선수 중 한 명 맞히기</small>
+      </span>
+      <span class="cross-link-go">하러 가기 <span aria-hidden="true">→</span></span>
+    </a>`;
+}
+
 function renderToday() {
   dom.todayDate.textContent = formatKoreanDate(today);
   const games = gamesForDate(toISODate(today), false);
-  dom.todayGames.innerHTML = games.length ? `<div class="game-list">${games.map(gameRowHtml).join("")}</div>` : `<div class="day-empty">오늘 예정된 경기가 없습니다.</div>`;
+  dom.todayGames.innerHTML = (games.length ? `<div class="game-list">${games.map(gameRowHtml).join("")}</div>` : `<div class="day-empty">오늘 예정된 경기가 없습니다.</div>`) + crossLinkHtml(games);
   bindGameButtons(dom.todayGames);
   dom.todayFreshness.textContent = freshnessText();
 }
@@ -968,6 +991,70 @@ function battingOrder(player) {
   return Number.isInteger(order) && order >= 1 && order <= 9 ? order : null;
 }
 
+/* ── 선수 프로필: Who Are Ya 선수 마스터 ─────────────────────────────────
+   매칭 실패는 조용히 넘긴다. 이름만으로도 라인업은 완성된 정보다. */
+
+const PLAYERS_API_URL = "/api/players";
+
+async function fetchPlayers() {
+  if (demoMode || state.playersState === "loading" || state.playersState === "ready") return;
+  state.playersState = "loading";
+  try {
+    const response = await fetch(PLAYERS_API_URL);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const payload = await response.json();
+    state.players = payload.players || {};
+    state.playersState = "ready";
+  } catch (error) {
+    console.warn("Player master request failed", error);
+    state.players = {};
+    state.playersState = "error";
+  }
+}
+
+function findPlayer(team, name, backNumber) {
+  const candidates = state.players ? state.players[`${team}|${name}`] : null;
+  if (!Array.isArray(candidates) || !candidates.length) return null;
+  if (candidates.length === 1) return candidates[0];
+  const number = backNumber ? String(backNumber) : null;
+  return candidates.find((player) => player.back_number === number) || null;
+}
+
+function playerSheetHtml(team, name, backNumber, context) {
+  const player = findPlayer(team, name, backNumber);
+  const facts = [];
+  if (player) {
+    if (player.birth_year) facts.push(`${player.birth_year}년생`);
+    if (player.height) facts.push(`${player.height}cm`);
+  }
+  const position = player && player.position ? player.position : "";
+  return `<div class="player-sheet-head">
+      <div class="player-sheet-title">
+        ${backNumber ? `<span class="player-no">${escapeHtml(backNumber)}</span>` : ""}
+        <strong id="playerSheetName">${escapeHtml(name)}</strong>
+      </div>
+      <button class="player-sheet-close" type="button" data-close-player aria-label="닫기">✕</button>
+    </div>
+    <div class="player-sheet-meta" style="${teamStyle(team)}">
+      <span class="team-dot"></span>${escapeHtml(team)}${position ? ` · ${escapeHtml(position)}` : ""}
+    </div>
+    ${facts.length ? `<p class="player-sheet-facts">${escapeHtml(facts.join(" · "))}</p>` : ""}
+    ${context ? `<div class="player-sheet-context">${context}</div>` : ""}
+    ${player ? `<a class="player-sheet-link" href="https://games.salarycrew.com/kbo/" target="_blank" rel="noopener">
+        <span><strong>야구 Who Are Ya 에서 만나기</strong><small>games.salarycrew.com</small></span>
+        <span aria-hidden="true">→</span></a>`
+      : `<p class="player-sheet-empty">이 선수의 상세 프로필은 아직 연결되지 않았습니다.</p>`}`;
+}
+
+function openPlayerSheet(team, name, backNumber, context) {
+  if (!dom.playerDialog || !dom.playerSheet) return;
+  dom.playerSheet.innerHTML = playerSheetHtml(team, name, backNumber, context);
+  dom.playerSheet.querySelectorAll("[data-close-player]").forEach((button) =>
+    button.addEventListener("click", () => dom.playerDialog.close()));
+  if (typeof dom.playerDialog.showModal === "function") dom.playerDialog.showModal();
+  else dom.playerDialog.setAttribute("open", "");
+}
+
 function lineupTeamSide(game) {
   if (state.detailLineupTeam === "home" || state.detailLineupTeam === "away") return state.detailLineupTeam;
   return game.home === state.favoriteTeam ? "home" : "away";
@@ -992,6 +1079,7 @@ function lineupFoldHtml(title, players) {
 function lineupPanelHtml(game) {
   const preview = previewOf(game);
   if (!preview) return `<div class="detail-empty">라인업 정보가 아직 수집되지 않았습니다.</div>`;
+  fetchPlayers();
   const side = lineupTeamSide(game);
   const lineup = Array.isArray(preview[`${side}_lineup`]) ? preview[`${side}_lineup`] : [];
   const starter = lineup.find((player) => battingOrder(player) === null) || preview[`${side}_starter`] || null;
@@ -1016,7 +1104,7 @@ function lineupPanelHtml(game) {
 
   const rows = batters.map((player) => {
     const position = POSITION_SHORT[player.positionName] || player.positionName || "-";
-    return `<div class="lineup-row"><span class="lineup-order">${escapeHtml(battingOrder(player))}</span><span class="lineup-pos">${escapeHtml(position)}</span><span class="lineup-no">${escapeHtml(player.backnum || "")}</span><strong class="lineup-name">${escapeHtml(player.name)}</strong><span class="lineup-hand">${escapeHtml(player.batsThrows || "")}</span></div>`;
+    return `<div class="lineup-row"><span class="lineup-order">${escapeHtml(battingOrder(player))}</span><span class="lineup-pos">${escapeHtml(position)}</span><span class="lineup-no">${escapeHtml(player.backnum || "")}</span><button class="lineup-name" type="button" data-player-name="${escapeHtml(player.name)}" data-player-no="${escapeHtml(player.backnum || "")}" data-player-order="${escapeHtml(battingOrder(player))}" data-player-position="${escapeHtml(player.positionName || "")}">${escapeHtml(player.name)}</button><span class="lineup-hand">${escapeHtml(player.batsThrows || "")}</span></div>`;
   }).join("");
 
   const note = getGameState(game) === "scheduled" ? "" : `<p class="lineup-source">예고 라인업입니다. 실제 출장 기록은 타자·투수 탭에서 확인하세요.</p>`;
@@ -1086,6 +1174,16 @@ function bindDetailInteractions(game) {
   dom.dialogBody.querySelectorAll("[data-lineup-team]").forEach((button) => button.addEventListener("click", () => {
     state.detailLineupTeam = button.dataset.lineupTeam;
     renderGameDetail(game);
+  }));
+  const side = lineupTeamSide(game);
+  const team = side === "home" ? game.home : game.away;
+  dom.dialogBody.querySelectorAll("[data-player-name]").forEach((button) => button.addEventListener("click", () => {
+    const order = button.dataset.playerOrder;
+    const position = button.dataset.playerPosition;
+    const context = order && position
+      ? `<span class="player-context-order">${escapeHtml(order)}</span><strong>${escapeHtml(position)}</strong><span class="player-context-game">${escapeHtml(game.away)} vs ${escapeHtml(game.home)} · ${escapeHtml(game.stadium)}</span>`
+      : "";
+    openPlayerSheet(team, button.dataset.playerName, button.dataset.playerNo, context);
   }));
 }
 
