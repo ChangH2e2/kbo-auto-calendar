@@ -27,6 +27,19 @@ const DEFAULT_TICKET_RULES = {
   SSG: { vendor: "SSG.COM", url: "https://ticket.ssg.com/ticket", daysBefore: 7, openTime: "11:00" }
 };
 
+// 주소로 화면을 연다. 단일 URL이면 "한화 경기 일정" 같은 검색어로 들어올 입구가 없다.
+function parseRoute(pathname) {
+  const path = decodeURIComponent(pathname || location.pathname);
+  const team = path.match(/^\/team\/([^/]+)\/?$/);
+  if (team && TEAMS.includes(team[1])) return { view: "team", team: team[1] };
+  const game = path.match(/^\/game\/(\d{8}[A-Za-z]{4}\d)\/?$/);
+  if (game) return { view: "schedule", gameId: game[1] };
+  const date = path.match(/^\/date\/(\d{4}-\d{2}-\d{2})\/?$/);
+  if (date) return { view: "schedule", date: date[1] };
+  return {};
+}
+
+const route = parseRoute();
 const demoMode = new URLSearchParams(location.search).get("demo") === "1";
 const initialView = new URLSearchParams(location.search).get("view");
 const today = startOfDay(new Date());
@@ -35,10 +48,14 @@ const state = {
   games: [],
   favoriteTeam: storedFavoriteTeam || null,
   hasStoredTeam: Boolean(storedFavoriteTeam),
-  activeView: ["today", "schedule", "team", "settings"].includes(initialView) ? initialView : (window.innerWidth >= 960 ? "schedule" : "today"),
-  cursorDate: new Date(today),
-  selectedDate: toISODate(today),
+  activeView: route.view || (["today", "schedule", "team", "settings"].includes(initialView) ? initialView : (window.innerWidth >= 960 ? "schedule" : "today")),
+  cursorDate: route.date ? new Date(`${route.date}T00:00:00`) : new Date(today),
+  selectedDate: route.date || toISODate(today),
   selectedGameId: null,
+  // 주소로 들어온 경기는 데이터가 도착한 뒤에 연다.
+  pendingGameId: route.gameId || null,
+  // /team/{팀}은 응원팀이 아니어도 그 팀을 보여준다.
+  viewTeam: route.team || storedFavoriteTeam || null,
   teamScope: window.innerWidth >= 960 || !storedFavoriteTeam ? "all" : "favorite",
   venue: "all",
   loadedAt: null,
@@ -576,9 +593,9 @@ function setFavoriteTeam(team) {
   state.favoriteTeam = team;
   state.hasStoredTeam = true;
   localStorage.setItem("kbo-favorite-team", team);
-  if (changed) { state.roster = null; state.rosterState = "idle"; }
+  if (changed) { state.roster = null; state.rosterState = "idle"; state.viewTeam = team; }
   renderAll();
-  if (changed && state.activeView === "team") fetchRoster();
+  if (changed && state.activeView === "team") { syncUrl(); fetchRoster(); }
 }
 
 /* ── 경기 프리뷰: 선발 매치업과 라인업 ─────────────────────────────────────
@@ -651,11 +668,16 @@ function starterMatchupHtml(preview) {
     </section>`;
 }
 
+// 승률이 같으면 공동 순위가 내려온다(한화·롯데 둘 다 .440으로 8위). 오류가 아니라 정상이다.
+function standingText(standing) {
+  const rank = standing && Number.isInteger(standing.rank) ? `${standing.rank}위` : "";
+  return [rank, winLossText(standing)].filter(Boolean).join(" · ");
+}
+
 function teamRecordHtml(game, preview) {
-  const away = winLossText(preview.away_standing);
-  const home = winLossText(preview.home_standing);
+  const away = standingText(preview.away_standing);
+  const home = standingText(preview.home_standing);
   if (!away && !home) return "";
-  // rank는 양 팀 모두 같은 값이 내려온 사례가 있어 쓰지 않는다. 승패만 신뢰한다.
   return `<div class="team-records"><span>${escapeHtml(away)}</span><span>${escapeHtml(home)}</span></div>`;
 }
 
@@ -847,6 +869,7 @@ function renderMonth() {
   dom.month.querySelectorAll("[data-select-date]").forEach((button) => button.addEventListener("click", (event) => {
     event.stopPropagation();
     state.selectedDate = button.dataset.selectDate;
+    syncUrl(true);
     const games = gamesForDate(state.selectedDate);
     state.selectedGameId = games[0]?.game_id || null;
     renderMonth();
@@ -916,6 +939,7 @@ function openGameDetail(gameId, tab) {
   renderGameDetail(game);
   if (typeof dom.dialog.showModal === "function") dom.dialog.showModal();
   else dom.dialog.setAttribute("open", "");
+  syncUrl(true);
 }
 
 function renderGameDetail(game) {
@@ -1204,6 +1228,29 @@ function updateCountdowns() {
   countdownTimer = setInterval(update, 1000);
 }
 
+// 지금 화면에 해당하는 주소. 상세가 열려 있으면 그 경기가 주소다.
+function currentPath() {
+  if (state.selectedGameId && dom.dialog && dom.dialog.open) return `/game/${state.selectedGameId}`;
+  if (state.activeView === "team" && (state.viewTeam || state.favoriteTeam)) {
+    return `/team/${encodeURIComponent(state.viewTeam || state.favoriteTeam)}`;
+  }
+  if (state.activeView === "schedule" && state.selectedDate !== toISODate(today)) return `/date/${state.selectedDate}`;
+  return state.activeView === "today" ? "/" : `/?view=${state.activeView}`;
+}
+
+function syncUrl(push) {
+  if (demoMode) return;
+  const path = currentPath();
+  if (path === location.pathname + location.search) return;
+  const entry = { view: state.activeView, gameId: state.selectedGameId, team: state.viewTeam, date: state.selectedDate };
+  try {
+    if (push) history.pushState(entry, "", path);
+    else history.replaceState(entry, "", path);
+  } catch (error) {
+    console.warn("URL sync failed", error);
+  }
+}
+
 function setActiveView(view) {
   if (!["today", "schedule", "team", "settings"].includes(view)) return;
   state.activeView = view;
@@ -1211,6 +1258,7 @@ function setActiveView(view) {
   document.querySelectorAll("[data-view-panel]").forEach((panel) => { panel.hidden = panel.dataset.viewPanel !== view; });
   document.querySelectorAll("[data-view]").forEach((button) => button.classList.toggle("is-active", button.dataset.view === view));
   window.scrollTo({ top: 0, behavior: "auto" });
+  syncUrl(true);
 }
 
 /* ── 내 팀: 1군 등록 현황과 등록/말소 ────────────────────────────────────── */
@@ -1219,7 +1267,7 @@ const ROSTER_API_URL = "/api/roster";
 const TRANSACTION_LABEL = { register: "등록", remove: "말소" };
 
 async function fetchRoster() {
-  const team = state.favoriteTeam;
+  const team = state.viewTeam || state.favoriteTeam;
   if (!team || demoMode) return;
   if (state.rosterState === "loading") return;
   if (state.roster && state.roster.team === team) return;
@@ -1229,7 +1277,7 @@ async function fetchRoster() {
     const response = await fetch(`${ROSTER_API_URL}?team=${encodeURIComponent(team)}`);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const payload = await response.json();
-    if (payload.team !== state.favoriteTeam) return;
+    if (payload.team !== (state.viewTeam || state.favoriteTeam)) return;
     state.roster = payload;
     state.rosterState = "ready";
   } catch (error) {
@@ -1302,25 +1350,26 @@ function rosterListHtml(roster) {
 
 function renderTeam() {
   if (!dom.team) return;
-  if (!state.favoriteTeam) {
+  const viewTeam = state.viewTeam || state.favoriteTeam;
+  if (!viewTeam) {
     dom.team.innerHTML = `<div class="empty-hero"><h1>응원팀을 선택해 보세요</h1><p>팀을 고르면 1군 등록 현황과 등록·말소 변동을 보여드립니다.</p><button class="primary-button" type="button" data-choose-team>응원팀 선택</button></div>`;
     const button = dom.team.querySelector("[data-choose-team]");
     if (button) button.addEventListener("click", () => setActiveView("settings"));
     return;
   }
-  const roster = state.roster && state.roster.team === state.favoriteTeam ? state.roster : null;
+  const roster = state.roster && state.roster.team === viewTeam ? state.roster : null;
   if (!roster) {
     dom.team.innerHTML = state.rosterState === "error"
       ? `<div class="empty-hero"><h1>등록 현황을 불러오지 못했습니다</h1><p>잠시 후 다시 시도해 주세요.</p></div>`
-      : `<div class="empty-hero"><h1>${escapeHtml(state.favoriteTeam)} 등록 현황</h1><p>불러오는 중입니다.</p></div>`;
+      : `<div class="empty-hero"><h1>${escapeHtml(viewTeam)} 등록 현황</h1><p>불러오는 중입니다.</p></div>`;
     return;
   }
   const counts = roster.counts || {};
   const tiles = ["투수", "포수", "내야수", "외야수"].map((position) => `<div class="count-tile"><strong>${escapeHtml(counts[position] ?? 0)}</strong><span>${escapeHtml(position)}</span></div>`).join("");
   dom.team.innerHTML = `
-    <header class="team-heading" style="${teamStyle(state.favoriteTeam)}">
+    <header class="team-heading" style="${teamStyle(viewTeam)}">
       <span class="team-dot"></span>
-      <h1>${escapeHtml(state.favoriteTeam)}</h1>
+      <h1>${escapeHtml(viewTeam)}</h1>
       <button class="text-button" type="button" data-view="settings">팀 변경</button>
     </header>
     <section class="card team-card">
@@ -1334,6 +1383,15 @@ function renderTeam() {
   dom.team.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => setActiveView(button.dataset.view)));
 }
 
+// 주소로 들어온 경기는 데이터가 도착한 뒤에야 열 수 있다.
+function openPendingGame() {
+  if (!state.pendingGameId) return;
+  const game = state.games.find((item) => item.game_id === state.pendingGameId);
+  if (!game) return;
+  state.pendingGameId = null;
+  openGameDetail(game.game_id);
+}
+
 function renderAll() {
   renderNotice();
   renderFavoriteTeam();
@@ -1343,6 +1401,7 @@ function renderAll() {
   renderTeam();
   renderIngestionStatus();
   setActiveView(state.activeView);
+  openPendingGame();
 }
 
 document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => setActiveView(button.dataset.view)));
@@ -1410,6 +1469,29 @@ document.getElementById("currentPeriod").addEventListener("click", () => {
 });
 document.getElementById("closeDialog").addEventListener("click", () => dom.dialog.close());
 dom.dialog.addEventListener("click", (event) => { if (event.target === dom.dialog) dom.dialog.close(); });
+// Esc로 닫히는 경우까지 한 곳에서 처리한다.
+dom.dialog.addEventListener("close", () => {
+  state.selectedGameId = null;
+  syncUrl(false);
+});
+
+window.addEventListener("popstate", () => {
+  const next = parseRoute();
+  if (next.gameId) {
+    state.pendingGameId = next.gameId;
+    openPendingGame();
+    return;
+  }
+  if (dom.dialog.open) dom.dialog.close();
+  if (next.team) state.viewTeam = next.team;
+  if (next.date) {
+    state.selectedDate = next.date;
+    state.cursorDate = new Date(`${next.date}T00:00:00`);
+  }
+  const view = next.view || new URLSearchParams(location.search).get("view") || "today";
+  state.activeView = ["today", "schedule", "team", "settings"].includes(view) ? view : "today";
+  renderAll();
+});
 document.getElementById("shareGame").addEventListener("click", async () => {
   const game = state.games.find((item) => item.game_id === state.selectedGameId);
   if (!game) return;
@@ -1424,7 +1506,7 @@ document.getElementById("shareGame").addEventListener("click", async () => {
 
 fetchGames();
 liveRefreshTimer = setInterval(refreshLiveData, 60 * 1000);
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch((error) => console.warn("PWA registration failed", error));
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch((error) => console.warn("PWA registration failed", error));
 dom.refreshNow.addEventListener("click", async () => {
   dom.refreshNow.disabled = true;
   dom.refreshNow.textContent = "갱신 중…";

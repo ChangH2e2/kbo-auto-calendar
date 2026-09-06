@@ -9,15 +9,15 @@
   <meta name="description" content="KBO 경기 일정, 예매 시점, 경기 결과를 한 흐름에서 확인하세요.">
   <title>KBO GameDay</title>
   <link rel="icon" href="data:,">
-  <link rel="manifest" href="./manifest.json">
+  <link rel="manifest" href="/manifest.json">
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="./styles.css?v=20260906-players">
+  <link rel="stylesheet" href="/styles.css?v=20260906-routes">
 </head>
 <body>
   <div class="app-shell">
     <aside class="desktop-sidebar" aria-label="주요 메뉴">
-      <a class="wordmark" href="./" aria-label="KBO GameDay 홈">KBO GameDay</a>
+      <a class="wordmark" href="/" aria-label="KBO GameDay 홈">KBO GameDay</a>
       <div class="sidebar-team">
         <span class="eyebrow">응원팀</span>
         <button class="team-button" id="sidebarTeamButton" type="button">
@@ -41,7 +41,7 @@
 
     <main class="main-content" id="mainContent">
       <header class="mobile-header">
-        <a class="wordmark" href="./">KBO GameDay</a>
+        <a class="wordmark" href="/">KBO GameDay</a>
         <button class="team-chip" id="mobileTeamButton" type="button" aria-label="응원팀 변경">
           <span class="team-dot" data-team-dot="LG"></span>
           <strong data-favorite-team>응원팀 선택</strong>
@@ -171,6 +171,6 @@
     <div class="player-sheet-body" id="playerSheetBody"></div>
   </dialog>
 
-  <script src="./app.js?v=20260906-players" defer></script>
+  <script src="/app.js?v=20260906-routes" defer></script>
 </body>
 </html>
